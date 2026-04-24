@@ -41,3 +41,5 @@ frontend/*.log
 tmp/
 temp/
 *.tmp
+/backend/configs/config.dev.yaml
+/backend/configs/config.prod.yaml

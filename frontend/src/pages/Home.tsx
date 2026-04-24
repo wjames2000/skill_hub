@@ -1,87 +1,215 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, type FormEvent } from "react";
+import { SkillCard } from "../components/ui/SkillCard";
+import { skillsApi } from "../lib/api/skills";
+import { statsApi } from "../lib/api/stats";
+import { routerApi } from "../lib/api/router";
+import type { Skill, Stats } from "../types";
+
+const defaultStats: Stats = {
+  totalSkills: 12480,
+  monthlyActiveDevs: 85200,
+  totalApiCalls: 1200000000,
+  pluginInstalls: 150000,
+  todayNew: 86,
+  api24hCalls: '1.2M',
+  crawlerRunning: 3,
+};
+
+const categories = [
+  { label: '文档生成', icon: 'description', query: '文档' },
+  { label: '代码编写', icon: 'code', query: '代码' },
+  { label: '数据分析', icon: 'database', query: '数据' },
+  { label: '设计辅助', icon: 'palette', query: '设计' },
+  { label: '自动化流', icon: 'robot_2', query: '自动化' },
+  { label: '翻译', icon: 'translate', query: '翻译' },
+];
+
+const iconMap: Record<string, string> = {
+  'extension': 'extension',
+  'group': 'group',
+  'api': 'api',
+  'download': 'download',
+  'data_object': 'data_object',
+  'terminal': 'terminal',
+  'analytics': 'analytics',
+  'language': 'language',
+  'default': 'extension',
+};
 
 export function Home() {
+  const navigate = useNavigate();
+  const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState<Stats>(defaultStats);
+  const [trendingSkills, setTrendingSkills] = useState<Skill[]>([]);
+  const [latestSkills, setLatestSkills] = useState<Skill[]>([]);
+  const [semanticResults, setSemanticResults] = useState<{ title: string; reason: string }[]>([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    statsApi.getOverview().then(setStats).catch(() => {});
+    skillsApi.getTrending().then(setTrendingSkills).catch(() => {});
+    skillsApi.getLatest().then(setLatestSkills).catch(() => {});
+  }, []);
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    if (searchMode === 'semantic') {
+      setSemanticLoading(true);
+      setSearching(true);
+      routerApi.match({ query: searchQuery.trim(), topK: 3 })
+        .then(results => {
+          setSemanticResults(results.map(r => ({
+            title: r.skill.title,
+            reason: r.reason,
+          })));
+        })
+        .catch(() => {
+          setSemanticResults([]);
+        })
+        .finally(() => {
+          setSemanticLoading(false);
+          setSearching(false);
+        });
+    } else {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const semanticCards = [
+    { label: '可用技能总量', value: stats.totalSkills.toLocaleString(), change: '12%', icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: '月活跃开发者', value: (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k+', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: '累计 API 调用', value: (stats.totalApiCalls / 1e9).toFixed(1) + 'B', changeText: '历史总计', icon: 'api', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: 'VS Code 插件安装', value: (stats.pluginInstalls / 1000).toFixed(0) + 'k+', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
+  ];
+
   return (
     <div className="flex w-full">
-      {/* SideNavBar */}
-      <aside className="hidden md:flex flex-col bg-slate-50 w-64 border-r border-slate-200">
-        <div className="px-6 mb-4 pt-8">
-          <h3 className="text-slate-900 font-bold text-sm tracking-normal capitalize">Explore Skills</h3>
-          <p className="text-slate-500 text-xs tracking-normal mt-1 capitalize">Browse by domain</p>
+      <aside className="hidden md:flex flex-col bg-slate-50 w-56 lg:w-64 border-r border-slate-200">
+        <div className="px-4 lg:px-6 mb-4 pt-8">
+          <h3 className="text-slate-900 font-bold text-sm">探索分类</h3>
+          <p className="text-slate-500 text-xs mt-1">按领域浏览</p>
         </div>
         <nav className="flex flex-col gap-1 w-full text-sm">
-          <a href="#" className="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-slate-100 transition-all">
-            <span className="material-symbols-outlined text-lg">description</span>
-            Documentation
-          </a>
-          <a href="#" className="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-slate-100 transition-all">
-            <span className="material-symbols-outlined text-lg">code</span>
-            Code
-          </a>
-          <a href="#" className="flex items-center gap-3 px-6 py-3 bg-blue-50 text-blue-700 border-r-2 border-blue-600">
-            <span className="material-symbols-outlined text-lg">database</span>
-            Data Analysis
-          </a>
-          <a href="#" className="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-slate-100 transition-all">
-            <span className="material-symbols-outlined text-lg">palette</span>
-            Design
-          </a>
-          <a href="#" className="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-slate-100 transition-all">
-            <span className="material-symbols-outlined text-lg">robot_2</span>
-            Automation
-          </a>
-          <a href="#" className="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-slate-100 transition-all">
-            <span className="material-symbols-outlined text-lg">translate</span>
-            Translation
-          </a>
+          {categories.map((cat, idx) => (
+            <Link
+              key={cat.label}
+              to={`/search?q=${encodeURIComponent(cat.query)}`}
+              className={`flex items-center gap-3 px-4 lg:px-6 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all ${idx === 2 ? 'bg-brand-50 text-brand-700 border-r-2 border-brand-600' : ''}`}
+            >
+              <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+              {cat.label}
+            </Link>
+          ))}
         </nav>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-12 max-w-[1280px] mx-auto w-full">
-        {/* Hero Section */}
-        <section className="flex flex-col items-center justify-center text-center py-16 px-4 bg-white rounded-xl border border-neutral-200 shadow-sm relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-white pointer-events-none"></div>
-          <div className="relative z-10 max-w-3xl flex flex-col items-center gap-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-sm font-medium border border-blue-200/50 mb-2">
+      <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-10 max-w-[1280px] mx-auto w-full">
+        <section className="flex flex-col items-center justify-center text-center py-12 lg:py-16 px-4 md:px-8 bg-white rounded-xl border border-slate-200 shadow-card relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-50/50 to-white pointer-events-none" />
+          <div className="relative z-10 max-w-3xl flex flex-col items-center gap-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-sm font-medium border border-brand-200/50">
               <span className="material-symbols-outlined text-sm fill">new_releases</span>
               v2.4 发布: 支持本地模型接入
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">让 AI 能力的获取像安装 IDE 插件一样简单</h1>
-            <p className="text-base text-slate-500 max-w-2xl">探索、测试并一键集成数以千计的专业 AI 技能。专为开发者打造的高效智能体生态系统。</p>
-            
-            <div className="w-full max-w-xl mt-4 relative flex items-center shadow-sm hover:shadow-md transition-shadow duration-300 rounded-lg bg-white border border-neutral-200 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-50/50">
-              <span className="material-symbols-outlined absolute left-4 text-neutral-400">search</span>
-              <input 
-                type="text" 
-                className="w-full py-4 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none" 
-                placeholder="寻找特定技能，例如 'Python 代码重构' 或 'SQL 优化'..." 
-              />
-              <Link to="/search" className="absolute right-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-                搜索技能
-              </Link>
+            <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+              让 AI 能力的获取像安装 IDE 插件一样简单
+            </h1>
+            <p className="text-sm md:text-base text-slate-500 max-w-2xl">
+              探索、测试并一键集成数以千计的专业 AI 技能。专为开发者打造的高效智能体生态系统。
+            </p>
+
+            <div className="w-full max-w-xl mt-2">
+              <div className="flex items-center gap-1 mb-3">
+                <button
+                  onClick={() => { setSearchMode('keyword'); setSemanticResults([]); }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                    searchMode === 'keyword'
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  关键词搜索
+                </button>
+                <button
+                  onClick={() => { setSearchMode('semantic'); setSemanticResults([]); }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                    searchMode === 'semantic'
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  智能语义搜索
+                </button>
+              </div>
+
+              <form onSubmit={handleSearch} className="relative flex items-center shadow-sm hover:shadow-md transition-shadow duration-300 rounded-lg bg-white border border-slate-200 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-50">
+                <span className="material-symbols-outlined absolute left-4 text-slate-400">
+                  {searchMode === 'semantic' ? 'psychology' : 'search'}
+                </span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full py-3.5 md:py-4 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none"
+                  placeholder={searchMode === 'semantic' ? "用自然语言描述您需要的技能..." : "搜索技能，如 'Python 代码重构'"}
+                />
+                <button
+                  type="submit"
+                  disabled={!searchQuery.trim() || semanticLoading}
+                  className="absolute right-2 px-4 py-1.5 md:py-2 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
+                >
+                  {semanticLoading ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin block" />
+                  ) : (searchMode === 'semantic' ? '智能匹配' : '搜索')}
+                </button>
+              </form>
+
+              {semanticResults.length > 0 && (
+                <div className="mt-4 bg-brand-50/50 border border-brand-200 rounded-lg p-4 text-left animate-fade-in">
+                  <h4 className="text-sm font-semibold text-brand-900 mb-2 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px]">lightbulb</span>
+                    智能推荐结果
+                  </h4>
+                  <div className="flex flex-col gap-2">
+                    {semanticResults.map((r, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-sm">
+                        <span className="text-brand-600 font-medium mt-0.5">{idx + 1}.</span>
+                        <div>
+                          <span className="font-medium text-slate-900">{r.title}</span>
+                          <p className="text-xs text-slate-500 mt-0.5">{r.reason}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}&mode=semantic`)}
+                    className="mt-3 text-sm text-brand-600 font-medium hover:text-brand-700"
+                  >
+                    查看全部匹配结果 →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>
 
-        {/* Stats Grid */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: '可用技能总量', value: '12,480+', change: '12%', icon: 'extension', color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '月活跃开发者', value: '85.2k+', change: '8%', icon: 'group', color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '累计 API 调用', value: '1.2B', changeText: '历史总计', icon: 'api', color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'VS Code 插件安装', value: '150k+', change: '24%', icon: 'download', color: 'text-blue-600', bg: 'bg-blue-50' },
-          ].map((stat, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm hover:shadow-md hover:border-blue-100 transition-all">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-slate-500 font-medium">{stat.label}</span>
+          {semanticCards.map((stat, idx) => (
+            <div key={idx} className="card p-5 md:p-6">
+              <div className="flex items-center justify-between mb-3 md:mb-4">
+                <span className="text-xs md:text-sm text-slate-500 font-medium">{stat.label}</span>
                 <div className={`p-2 rounded-md ${stat.bg} ${stat.color}`}>
                   <span className="material-symbols-outlined text-[20px]">{stat.icon}</span>
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-slate-900">{stat.value}</span>
-                {stat.change ? (
+                <span className="text-xl md:text-2xl font-bold text-slate-900">{stat.value}</span>
+                {'change' in stat ? (
                   <span className="text-xs text-green-500 flex items-center">
                     <span className="material-symbols-outlined text-[14px]">arrow_upward</span> {stat.change}
                   </span>
@@ -93,112 +221,84 @@ export function Home() {
           ))}
         </section>
 
-        {/* Main Content Grid: Trending Left, Timeline Right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="lg:col-span-2 flex flex-col gap-6">
+          <section className="lg:col-span-2 flex flex-col gap-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-500 fill">local_fire_department</span>
                 热门技能榜
               </h2>
-              <a href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center">
-                查看全部 <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-              </a>
+              <Link to="/search?sort=downloads" className="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center">
+                查看全部
+                <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+              </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { title: 'JSON Schema 生成器', author: 'DataCraft_AI', icon: 'data_object', iconColor: 'text-blue-600', iconBg: 'bg-blue-50', tags: ['数据处理', 'JSON'], desc: '自动将复杂的 JSON 数据结构推断并转换为符合标准规范的 JSON Schema，支持嵌套对象处理。' },
-                { title: 'Python 代码重构优化', author: 'CodeGuru', icon: 'terminal', iconColor: 'text-green-600', iconBg: 'bg-green-50', tags: ['代码生成', 'Python'], desc: '遵循 PEP 8 规范，自动识别代码异味并重构 Python 脚本，提升可读性与执行效率。' },
-                { title: 'SQL 慢查询分析器', author: 'DB_Doctor', icon: 'analytics', iconColor: 'text-purple-600', iconBg: 'bg-purple-50', tags: ['数据库', 'SQL'], desc: '解析慢查询日志，自动提供索引优化建议和查询重写方案，支持 MySQL 和 PostgreSQL。' },
-                { title: 'i18n 多语言自动提取', author: 'FrontEnd_Ninja', icon: 'language', iconColor: 'text-orange-600', iconBg: 'bg-orange-50', tags: ['前端', '工具'], desc: '扫描 React/Vue 组件库，自动提取硬编码文本并生成 i18n 键值对文件，大幅缩短国际化工作流。' },
-              ].map((skill, idx) => (
-                <Link to="/skill/1" key={idx} className="bg-white border border-neutral-200 rounded-lg p-5 hover:shadow-md hover:border-blue-200 transition-all group flex flex-col h-full relative overflow-hidden">
-                  <div className="flex items-start justify-between mb-3 relative z-10">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded flex items-center justify-center border border-white mix-blend-multiply ${skill.iconBg} ${skill.iconColor}`}>
-                        <span className="material-symbols-outlined">{skill.icon}</span>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors">{skill.title}</h3>
-                        <p className="text-xs text-slate-500">by {skill.author}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-neutral-200">
-                      <span className="material-symbols-outlined text-[14px] text-amber-500 fill">star</span>
-                      <span className="font-mono text-[12px] font-medium text-slate-700">4.9</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-600 line-clamp-2 mb-4 flex-1">
-                    {skill.desc}
-                  </p>
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-neutral-100">
-                    <div className="flex gap-2">
-                      {skill.tags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-slate-50 text-slate-600 rounded font-mono text-[11px] border border-neutral-200">{tag}</span>
-                      ))}
-                    </div>
-                    <span className="text-blue-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      安装 <span className="material-symbols-outlined text-[16px]">download</span>
-                    </span>
-                  </div>
-                </Link>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {trendingSkills.length > 0 ? trendingSkills.map(skill => (
+                <SkillCard key={skill.id} skill={skill} />
+              )) : (
+                <>
+                  {[{ title: 'JSON Schema 生成器', author: 'DataCraft_AI', icon: 'data_object', iconColor: 'text-blue-600', iconBg: 'bg-blue-50', tags: ['数据处理', 'JSON'], description: '自动将复杂的 JSON 数据结构推断并转换为符合标准规范的 JSON Schema', downloads: 12400, rating: 4.9, safe: true, id: 1 },
+                    { title: 'Python 代码重构优化', author: 'CodeGuru', icon: 'terminal', iconColor: 'text-green-600', iconBg: 'bg-green-50', tags: ['代码生成', 'Python'], description: '遵循 PEP 8 规范，自动识别代码异味并重构 Python 脚本', downloads: 9800, rating: 4.8, safe: true, id: 2 },
+                    { title: 'SQL 慢查询分析器', author: 'DB_Doctor', icon: 'analytics', iconColor: 'text-purple-600', iconBg: 'bg-purple-50', tags: ['数据库', 'SQL'], description: '解析慢查询日志，自动提供索引优化建议', downloads: 7600, rating: 4.7, safe: true, id: 3, source: 'github' as const, updatedAt: '', createdAt: '', installCount: 0, category: '' },
+                    { title: 'i18n 多语言自动提取', author: 'FrontEnd_Ninja', icon: 'language', iconColor: 'text-orange-600', iconBg: 'bg-orange-50', tags: ['前端', '工具'], description: '扫描 React/Vue 组件库，自动提取硬编码文本并生成 i18n 文件', downloads: 5400, rating: 4.9, safe: true, id: 4, source: 'official' as const, updatedAt: '', createdAt: '', installCount: 0, category: '' },
+                  ].map(skill => (
+                    <SkillCard key={skill.id} skill={skill as Skill} />
+                  ))}
+                </>
+              )}
             </div>
           </section>
 
-          {/* Timeline */}
-          <section className="lg:col-span-1 flex flex-col gap-6">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <section className="flex flex-col gap-5">
+            <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
               <span className="material-symbols-outlined text-green-500">update</span>
               最新收录
             </h2>
-            <div className="bg-white border border-neutral-200 rounded-lg p-5">
-              <div className="relative border-l-2 border-slate-100 ml-3 flex flex-col gap-6 py-2">
-                {[
+            <div className="card p-5">
+              <div className="relative border-l-2 border-slate-100 ml-3 flex flex-col gap-5 py-2">
+                {(latestSkills.length > 0 ? latestSkills : [
                   { title: 'Docker Compose 生成器', time: '10分钟前', desc: 'DevOps / 自动化部署', active: true },
                   { title: 'React 组件测试桩代码', time: '1小时前', desc: '前端 / 单元测试' },
                   { title: 'Git 提交信息美化', time: '3小时前', desc: '工作流 / 工具' },
                   { title: 'Nginx 伪静态转换', time: '5小时前', desc: '运维 / 配置' },
-                ].map((item, idx) => (
+                ]).map((item, idx) => (
                   <div key={idx} className="relative pl-6">
-                    <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1.5 ring-4 ring-white ${item.active ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-baseline justify-between">
-                        <a href="#" className="text-sm font-medium text-slate-900 hover:text-blue-600 transition-colors">{item.title}</a>
-                        <span className="text-[11px] text-slate-500">{item.time}</span>
+                    <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1.5 ring-4 ring-white ${'active' in item && item.active ? 'bg-brand-600' : 'bg-slate-300'}`} />
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <Link to={`/skill/${'id' in item ? item.id : idx + 1}`} className="text-sm font-medium text-slate-900 hover:text-brand-600 transition-colors">
+                          {'title' in item ? item.title : ''}
+                        </Link>
+                        <span className="text-[11px] text-slate-500 shrink-0">{'time' in item ? item.time : ''}</span>
                       </div>
-                      <p className="text-xs text-slate-500 line-clamp-1">{item.desc}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{'desc' in item ? item.desc : ''}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <a href="#" className="block text-center w-full mt-4 py-2 text-blue-600 text-sm font-medium bg-blue-50 hover:bg-blue-100 rounded transition-colors">
+              <Link to="/search?sort=newest" className="block text-center w-full mt-4 py-2 text-brand-600 text-sm font-medium bg-brand-50 hover:bg-brand-100 rounded transition-colors">
                 查看动态流
-              </a>
+              </Link>
             </div>
           </section>
         </div>
 
-        {/* Discover by Concept Row */}
-        <section className="flex flex-col gap-6 pt-8 border-t border-neutral-200 mt-4">
-          <h2 className="text-2xl font-bold text-slate-900">按领域探索</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-              { label: '文档生成', icon: 'description' },
-              { label: '代码编写', icon: 'code' },
-              { label: '数据分析', icon: 'database' },
-              { label: '设计辅助', icon: 'palette' },
-              { label: '自动化流', icon: 'robot_2' },
-              { label: '本地化翻译', icon: 'translate' },
-            ].map(cat => (
-              <a key={cat.label} href="#" className="flex flex-col items-center justify-center p-6 bg-white border border-neutral-200 rounded-lg hover:border-blue-600 hover:shadow-md group transition-all">
-                <span className="material-symbols-outlined text-[32px] text-slate-400 group-hover:text-blue-600 mb-3 transition-colors">{cat.icon}</span>
-                <span className="text-sm font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{cat.label}</span>
-              </a>
+        <section className="flex flex-col gap-5 pt-8 border-t border-slate-200">
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">按领域探索</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map(cat => (
+              <Link
+                key={cat.label}
+                to={`/search?q=${encodeURIComponent(cat.query)}`}
+                className="flex flex-col items-center justify-center p-5 md:p-6 bg-white border border-slate-200 rounded-lg hover:border-brand-600 hover:shadow-md group transition-all"
+              >
+                <span className="material-symbols-outlined text-[28px] md:text-[32px] text-slate-400 group-hover:text-brand-600 mb-2 md:mb-3 transition-colors">{cat.icon}</span>
+                <span className="text-xs md:text-sm font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{cat.label}</span>
+              </Link>
             ))}
           </div>
         </section>
-
       </main>
     </div>
   );
