@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skill-hub-ingress
+  namespace: skill-hub
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - skillhub.example.com
+      secretName: skill-hub-tls
+  rules:
+    - host: skillhub.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: router-api
+                port:
+                  number: 8080
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-api
+                port:
+                  number: 8080

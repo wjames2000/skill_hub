@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skill-hub-config
+  namespace: skill-hub
+data:
+  config.yaml: |
+    app:
+      name: skill-hub
+      env: production
+      port: 8080
+      version: 1.0.0
+    jwt:
+      expire_hour: 72
+    db:
+      driver: postgres
+      dsn: "host=skill-hub-postgres port=5432 user=skillhub password=skillhub dbname=skillhub sslmode=disable"
+      max_open: 25
+      max_idle: 10
+      max_lifetime: 30m
+    redis:
+      addr: "skill-hub-redis:6379"
+      password: ""
+      db: 0
+    meili:
+      host: "http://skill-hub-meilisearch:7700"
+      api_key: ""
+    minio:
+      endpoint: "skill-hub-minio:9000"
+      access_key: "skillhub"
+      secret_key: "skillhub123"
+      use_ssl: false
+      bucket: "skills"
+    consul:
+      addr: "skill-hub-consul:8500"
+      token: ""
+    github:
+      tokens: []
+      search_topics:
+        - "skill"
+        - "ai-assistant"
+        - "copilot-plugin"
+        - "cursor-rules"
+        - "cline-plugin"
+        - "windsurf-plugin"
+      max_per_page: 100
+      request_delay: 200
+    sync:
+      full_sync_cron: "0 0 3 * * *"
+      incremental_cron: "0 */6 * * *"
+      incremental_days: 7
+      concurrency: 5
+      sync_timeout: 1800
+      scan_enabled: false
+    semgrep:
+      enabled: false
+      binary: "semgrep"
+      rules: "p/default"
+      timeout: 300
+    milvus:
+      address: "skill-hub-milvus:19530"
+      user: ""
+      password: ""
+      db_name: "skillhub"
+    embedding:
+      base_url: "http://skill-hub-ollama:11434/v1"
+      api_key: ""
+      model: "nomic-embed-text"
+      dims: 768
+    llm:
+      base_url: "http://skill-hub-ollama:11434/v1"
+      api_key: ""
+      model: "qwen2.5:7b"
+      max_tokens: 1024
+      temperature: 0.1
+    reranker:
+      base_url: "http://skill-hub-ollama:11434/v1"
+      api_key: ""
+      model: "bge-reranker-v2-m3"

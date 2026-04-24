@@ -1,0 +1,187 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: router-api
+  namespace: skill-hub
+  labels:
+    app: router-api
+    service: skill-hub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: router-api
+  template:
+    metadata:
+      labels:
+        app: router-api
+        service: skill-hub
+    spec:
+      containers:
+        - name: router-api
+          image: skill-hub/router-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: CONFIG_FILE
+              value: /etc/skill-hub/config.yaml
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: skill-hub-secret
+                  key: JWT_SECRET
+            - name: GITHUB_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: skill-hub-secret
+                  key: GITHUB_TOKENS
+          volumeMounts:
+            - name: config
+              mountPath: /etc/skill-hub
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: skill-hub-config
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sync-worker
+  namespace: skill-hub
+  labels:
+    app: sync-worker
+    service: skill-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sync-worker
+  template:
+    metadata:
+      labels:
+        app: sync-worker
+        service: skill-hub
+    spec:
+      containers:
+        - name: sync-worker
+          image: skill-hub/sync-worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: CONFIG_FILE
+              value: /etc/skill-hub/config.yaml
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: skill-hub-secret
+                  key: JWT_SECRET
+            - name: GITHUB_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: skill-hub-secret
+                  key: GITHUB_TOKENS
+          volumeMounts:
+            - name: config
+              mountPath: /etc/skill-hub
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+      volumes:
+        - name: config
+          configMap:
+            name: skill-hub-config
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-api
+  namespace: skill-hub
+  labels:
+    app: admin-api
+    service: skill-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-api
+  template:
+    metadata:
+      labels:
+        app: admin-api
+        service: skill-hub
+    spec:
+      containers:
+        - name: admin-api
+          image: skill-hub/admin-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: CONFIG_FILE
+              value: /etc/skill-hub/config.yaml
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: skill-hub-secret
+                  key: JWT_SECRET
+            - name: GITHUB_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: skill-hub-secret
+                  key: GITHUB_TOKENS
+          volumeMounts:
+            - name: config
+              mountPath: /etc/skill-hub
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: skill-hub-config

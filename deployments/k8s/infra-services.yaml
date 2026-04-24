@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-postgres
+  namespace: skill-hub
+  labels:
+    app: postgres
+    infra: skill-hub
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-redis
+  namespace: skill-hub
+  labels:
+    app: redis
+    infra: skill-hub
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-meilisearch
+  namespace: skill-hub
+  labels:
+    app: meilisearch
+    infra: skill-hub
+spec:
+  ports:
+    - port: 7700
+      targetPort: 7700
+  selector:
+    app: meilisearch
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-minio
+  namespace: skill-hub
+  labels:
+    app: minio
+    infra: skill-hub
+spec:
+  ports:
+    - port: 9000
+      targetPort: 9000
+  selector:
+    app: minio
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-consul
+  namespace: skill-hub
+  labels:
+    app: consul
+    infra: skill-hub
+spec:
+  ports:
+    - port: 8500
+      targetPort: 8500
+  selector:
+    app: consul
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-milvus
+  namespace: skill-hub
+  labels:
+    app: milvus
+    infra: skill-hub
+spec:
+  ports:
+    - port: 19530
+      targetPort: 19530
+  selector:
+    app: milvus
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-hub-ollama
+  namespace: skill-hub
+  labels:
+    app: ollama
+    infra: skill-hub
+spec:
+  ports:
+    - port: 11434
+      targetPort: 11434
+  selector:
+    app: ollama
+  clusterIP: None

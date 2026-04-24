@@ -1,0 +1,76 @@
+{
+  "title": "SkillHub Pro Overview",
+  "version": 1,
+  "panels": [
+    {
+      "title": "HTTP Request Rate",
+      "type": "graph",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{namespace=\"skill-hub\"}[5m])) by (service)",
+          "legendFormat": "{{ service }}"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate (5xx)",
+      "type": "graph",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\", namespace=\"skill-hub\"}[5m])) by (service)",
+          "legendFormat": "{{ service }}"
+        }
+      ]
+    },
+    {
+      "title": "P95 Latency",
+      "type": "graph",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"skill-hub\"}[5m])) by (le, service))",
+          "legendFormat": "{{ service }}"
+        }
+      ]
+    },
+    {
+      "title": "Sync Job Status",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "skill_sync_jobs_running",
+          "legendFormat": "Running"
+        },
+        {
+          "expr": "skill_sync_jobs_failures_total",
+          "legendFormat": "Failures"
+        }
+      ]
+    },
+    {
+      "title": "CPU Usage",
+      "type": "graph",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"skill-hub\"}[5m])) by (pod)",
+          "legendFormat": "{{ pod }}"
+        }
+      ]
+    },
+    {
+      "title": "Memory Usage",
+      "type": "graph",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{namespace=\"skill-hub\"}) by (pod)",
+          "legendFormat": "{{ pod }}"
+        }
+      ]
+    }
+  ]
+}

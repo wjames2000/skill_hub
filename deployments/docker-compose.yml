@@ -1,0 +1,87 @@
+name: skill-hub
+
+include:
+  - path: docker-compose.infra.yml
+
+services:
+  router-api:
+    build:
+      context: ../backend
+      dockerfile: ../deployments/Dockerfile.backend
+      args:
+        SERVICE: router-api
+    ports:
+      - "8080:8080"
+    env_file: ../backend/.env
+    environment:
+      - CONFIG_FILE=/app/config.yaml
+    volumes:
+      - ../backend/configs/config.prod.yaml:/app/config.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - skill-hub-net
+
+  sync-worker:
+    build:
+      context: ../backend
+      dockerfile: ../deployments/Dockerfile.backend
+      args:
+        SERVICE: sync-worker
+    env_file: ../backend/.env
+    environment:
+      - CONFIG_FILE=/app/config.yaml
+    volumes:
+      - ../backend/configs/config.prod.yaml:/app/config.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - skill-hub-net
+
+  admin-api:
+    build:
+      context: ../backend
+      dockerfile: ../deployments/Dockerfile.backend
+      args:
+        SERVICE: admin-api
+    ports:
+      - "8081:8080"
+    env_file: ../backend/.env
+    environment:
+      - CONFIG_FILE=/app/config.yaml
+    volumes:
+      - ../backend/configs/config.prod.yaml:/app/config.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - skill-hub-net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../deployments/Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - router-api
+    networks:
+      - skill-hub-net
+
+networks:
+  skill-hub-net:
+    driver: bridge

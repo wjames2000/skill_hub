@@ -1,0 +1,282 @@
+[
+  {
+    "id": 1,
+    "query": "how do I create a line chart in excel",
+    "expected_skills": ["excel-chart-creator", "excel-trend-analyzer"],
+    "category": "data-analysis",
+    "difficulty": "easy"
+  },
+  {
+    "id": 2,
+    "query": "generate a presentation about quarterly sales",
+    "expected_skills": ["ppt-generator", "sales-report-generator"],
+    "category": "presentation",
+    "difficulty": "easy"
+  },
+  {
+    "id": 3,
+    "query": "analyze customer feedback from csv file",
+    "expected_skills": ["csv-analyzer", "sentiment-analyzer"],
+    "category": "data-analysis",
+    "difficulty": "medium"
+  },
+  {
+    "id": 4,
+    "query": "convert a pdf invoice to excel format",
+    "expected_skills": ["pdf-extractor", "excel-formatter"],
+    "category": "conversion",
+    "difficulty": "medium"
+  },
+  {
+    "id": 5,
+    "query": "help me write a python script to scrape website data",
+    "expected_skills": ["web-scraper", "python-code-generator"],
+    "category": "development",
+    "difficulty": "medium"
+  },
+  {
+    "id": 6,
+    "query": "translate this document from english to chinese",
+    "expected_skills": ["document-translator"],
+    "category": "translation",
+    "difficulty": "easy"
+  },
+  {
+    "id": 7,
+    "query": "summarize this long article into bullet points",
+    "expected_skills": ["text-summarizer"],
+    "category": "writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": 8,
+    "query": "check my essay for grammar and style issues",
+    "expected_skills": ["grammar-checker", "writing-assistant"],
+    "category": "writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": 9,
+    "query": "create a gantt chart for project timeline",
+    "expected_skills": ["gantt-chart-generator", "project-planner"],
+    "category": "project-management",
+    "difficulty": "medium"
+  },
+  {
+    "id": 10,
+    "query": "merge multiple pdf files into one document",
+    "expected_skills": ["pdf-merger"],
+    "category": "conversion",
+    "difficulty": "easy"
+  },
+  {
+    "id": 11,
+    "query": "send automated email reminders to my team",
+    "expected_skills": ["email-automator"],
+    "category": "communication",
+    "difficulty": "medium"
+  },
+  {
+    "id": 12,
+    "query": "schedule a meeting based on everyone's calendar",
+    "expected_skills": ["calendar-scheduler"],
+    "category": "productivity",
+    "difficulty": "medium"
+  },
+  {
+    "id": 13,
+    "query": "analyze sales data and predict next quarter trends",
+    "expected_skills": ["sales-forecaster", "excel-trend-analyzer", "data-analyzer"],
+    "category": "data-analysis",
+    "difficulty": "hard"
+  },
+  {
+    "id": 14,
+    "query": "create a dashboard showing real-time server metrics",
+    "expected_skills": ["dashboard-generator", "metrics-visualizer"],
+    "category": "devops",
+    "difficulty": "hard"
+  },
+  {
+    "id": 15,
+    "query": "convert my notes into a structured markdown document",
+    "expected_skills": ["markdown-formatter", "note-organizer"],
+    "category": "writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": 16,
+    "query": "generate test data for a user database",
+    "expected_skills": ["test-data-generator"],
+    "category": "development",
+    "difficulty": "medium"
+  },
+  {
+    "id": 17,
+    "query": "resize and compress images in bulk",
+    "expected_skills": ["image-processor", "batch-resizer"],
+    "category": "media",
+    "difficulty": "easy"
+  },
+  {
+    "id": 18,
+    "query": "find duplicate files in my download folder",
+    "expected_skills": ["duplicate-finder"],
+    "category": "utilities",
+    "difficulty": "easy"
+  },
+  {
+    "id": 19,
+    "query": "backup my database to cloud storage daily",
+    "expected_skills": ["db-backup-tool", "cloud-syncer"],
+    "category": "devops",
+    "difficulty": "hard"
+  },
+  {
+    "id": 20,
+    "query": "create a rest api endpoint from a database table",
+    "expected_skills": ["api-generator"],
+    "category": "development",
+    "difficulty": "hard"
+  },
+  {
+    "id": 21,
+    "query": "I need to fix a bug in my react component",
+    "expected_skills": ["react-debugger", "code-reviewer"],
+    "category": "development",
+    "difficulty": "medium"
+  },
+  {
+    "id": 22,
+    "query": "optimize slow sql queries in my application",
+    "expected_skills": ["sql-optimizer", "query-analyzer"],
+    "category": "database",
+    "difficulty": "hard"
+  },
+  {
+    "id": 23,
+    "query": "convert json data to csv format",
+    "expected_skills": ["json-to-csv"],
+    "category": "conversion",
+    "difficulty": "easy"
+  },
+  {
+    "id": 24,
+    "query": "generate qr code for a url",
+    "expected_skills": ["qr-generator"],
+    "category": "utilities",
+    "difficulty": "easy"
+  },
+  {
+    "id": 25,
+    "query": "check website uptime and alert if down",
+    "expected_skills": ["uptime-monitor", "alert-manager"],
+    "category": "devops",
+    "difficulty": "medium"
+  },
+  {
+    "id": 26,
+    "query": "extract email addresses from a text file",
+    "expected_skills": ["email-extractor", "text-parser"],
+    "category": "utilities",
+    "difficulty": "easy"
+  },
+  {
+    "id": 27,
+    "query": "create a mind map from my project notes",
+    "expected_skills": ["mind-map-generator"],
+    "category": "productivity",
+    "difficulty": "medium"
+  },
+  {
+    "id": 28,
+    "query": "automatically categorize my expenses from bank statements",
+    "expected_skills": ["expense-categorizer", "bank-statement-analyzer"],
+    "category": "finance",
+    "difficulty": "medium"
+  },
+  {
+    "id": 29,
+    "query": "generate a weekly report from jira tickets",
+    "expected_skills": ["jira-report-generator", "weekly-report-builder"],
+    "category": "project-management",
+    "difficulty": "medium"
+  },
+  {
+    "id": 30,
+    "query": "create a simple chatbot for customer support",
+    "expected_skills": ["chatbot-builder"],
+    "category": "development",
+    "difficulty": "hard"
+  },
+  {
+    "id": 31,
+    "query": "remove background from product images",
+    "expected_skills": ["background-remover", "image-processor"],
+    "category": "media",
+    "difficulty": "medium"
+  },
+  {
+    "id": 32,
+    "query": "validate email addresses in a mailing list",
+    "expected_skills": ["email-validator"],
+    "category": "utilities",
+    "difficulty": "easy"
+  },
+  {
+    "id": 33,
+    "query": "create a heatmap from location data",
+    "expected_skills": ["heatmap-generator", "data-visualizer"],
+    "category": "data-analysis",
+    "difficulty": "medium"
+  },
+  {
+    "id": 34,
+    "query": "automatically resize images for social media",
+    "expected_skills": ["social-media-resizer", "image-processor"],
+    "category": "media",
+    "difficulty": "easy"
+  },
+  {
+    "id": 35,
+    "query": "generate password for new user accounts",
+    "expected_skills": ["password-generator"],
+    "category": "security",
+    "difficulty": "easy"
+  },
+  {
+    "id": 36,
+    "query": "scan my code for security vulnerabilities",
+    "expected_skills": ["security-scanner", "code-analyzer"],
+    "category": "security",
+    "difficulty": "hard"
+  },
+  {
+    "id": 37,
+    "query": "convert speech to text from audio recording",
+    "expected_skills": ["speech-to-text"],
+    "category": "media",
+    "difficulty": "medium"
+  },
+  {
+    "id": 38,
+    "query": "generate a word cloud from survey responses",
+    "expected_skills": ["word-cloud-generator", "survey-analyzer"],
+    "category": "data-analysis",
+    "difficulty": "easy"
+  },
+  {
+    "id": 39,
+    "query": "count calories from a photo of my meal",
+    "expected_skills": ["calorie-counter", "image-recognizer"],
+    "category": "health",
+    "difficulty": "hard"
+  },
+  {
+    "id": 40,
+    "query": "format code according to prettier rules",
+    "expected_skills": ["code-formatter"],
+    "category": "development",
+    "difficulty": "easy"
+  }
+]
