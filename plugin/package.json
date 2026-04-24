@@ -1,0 +1,157 @@
+{
+  "name": "skillhub-pro",
+  "displayName": "SkillHub Pro",
+  "description": "AI技能宝库 - 在VS Code中浏览、安装和管理AI技能",
+  "version": "1.0.0",
+  "publisher": "skillhub",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "AI"
+  ],
+  "keywords": [
+    "ai",
+    "skills",
+    "claude",
+    "gpt",
+    "mcp",
+    "agent"
+  ],
+  "activationEvents": [
+    "onView:skillhub-sidebar",
+    "onCommand:skillhub.search",
+    "onCommand:skillhub.install",
+    "onCommand:skillhub.login",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "resources/icon.svg",
+  "galleryBanner": {
+    "color": "#2563eb",
+    "theme": "dark"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "skillhub",
+          "title": "SkillHub",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "skillhub-sidebar": [
+        {
+          "id": "skillTree",
+          "name": "技能浏览"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "skillhub.search",
+        "title": "搜索技能",
+        "icon": "$(search)"
+      },
+      {
+        "command": "skillhub.install",
+        "title": "安装技能"
+      },
+      {
+        "command": "skillhub.login",
+        "title": "SkillHub 登录"
+      },
+      {
+        "command": "skillhub.logout",
+        "title": "SkillHub 登出"
+      },
+      {
+        "command": "skillhub.refresh",
+        "title": "刷新技能列表"
+      },
+      {
+        "command": "skillhub.showDetail",
+        "title": "查看技能详情"
+      },
+      {
+        "command": "skillhub.openSkillFolder",
+        "title": "打开技能目录"
+      },
+      {
+        "command": "skillhub.toggleSkill",
+        "title": "启用/禁用技能"
+      },
+      {
+        "command": "skillhub.checkUpdates",
+        "title": "检查技能更新"
+      },
+      {
+        "command": "skillhub.syncToCloud",
+        "title": "同步到云端"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "skillhub.search",
+        "key": "ctrl+shift+k",
+        "mac": "cmd+shift+k"
+      }
+    ],
+    "configuration": {
+      "title": "SkillHub Pro",
+      "properties": {
+        "skillhub.apiEndpoint": {
+          "type": "string",
+          "default": "https://api.skillhub.pro/v1",
+          "description": "API 端点地址"
+        },
+        "skillhub.localSkillsPath": {
+          "type": "string",
+          "default": ".claude/skills",
+          "description": "本地技能存储目录（相对于工作区根目录）"
+        },
+        "skillhub.autoUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动检查技能更新"
+        },
+        "skillhub.showRecommendations": {
+          "type": "boolean",
+          "default": true,
+          "description": "显示场景化推荐"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run esbuild:extension && npm run copy-resources",
+    "esbuild:extension": "esbuild ./src/extension.ts --bundle --outfile=./dist/extension.js --external:vscode --external:fs --external:path --external:child_process --external:axios --format=cjs --platform=node --log-level=warning",
+    "copy-resources": "node -e \"const fs=require('fs');if(!fs.existsSync('./dist'))fs.mkdirSync('./dist');\"",
+    "watch": "tsc -watch",
+    "test": "node ./test/runTest.js",
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vscode/test-electron": "^2.3.8",
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skillhub/skillhub-pro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skillhub/skillhub-pro/issues"
+  },
+  "license": "MIT"
+}
