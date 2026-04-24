@@ -1,0 +1,157 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "README_CN.md"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [router-api, sync-worker, admin-api]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          file: deployments/Dockerfile.backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}:latest
+          build-args: |
+            SERVICE=${{ matrix.service }}
+
+  build-frontend:
+    name: Build & Push Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          file: deployments/Dockerfile.frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/frontend:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/frontend:latest
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build-and-push, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30"
+
+      - name: Set kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Update images and deploy
+        run: |
+          kubectl set image deployment/router-api -n skill-hub \
+            router-api=${{ env.REGISTRY }}/${{ github.repository }}/router-api:${{ env.IMAGE_TAG }}
+          kubectl set image deployment/sync-worker -n skill-hub \
+            sync-worker=${{ env.REGISTRY }}/${{ github.repository }}/sync-worker:${{ env.IMAGE_TAG }}
+          kubectl set image deployment/admin-api -n skill-hub \
+            admin-api=${{ env.REGISTRY }}/${{ github.repository }}/admin-api:${{ env.IMAGE_TAG }}
+          kubectl set image deployment/frontend -n skill-hub \
+            frontend=${{ env.REGISTRY }}/${{ github.repository }}/frontend:${{ env.IMAGE_TAG }}
+          kubectl rollout status deployment/router-api -n skill-hub
+          kubectl rollout status deployment/sync-worker -n skill-hub
+          kubectl rollout status deployment/admin-api -n skill-hub
+          kubectl rollout status deployment/frontend -n skill-hub
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [build-and-push, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30"
+
+      - name: Set kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy to production
+        run: |
+          kubectl set image deployment/router-api -n skill-hub \
+            router-api=${{ env.REGISTRY }}/${{ github.repository }}/router-api:${{ env.IMAGE_TAG }}
+          kubectl set image deployment/sync-worker -n skill-hub \
+            sync-worker=${{ env.REGISTRY }}/${{ github.repository }}/sync-worker:${{ env.IMAGE_TAG }}
+          kubectl set image deployment/admin-api -n skill-hub \
+            admin-api=${{ env.REGISTRY }}/${{ github.repository }}/admin-api:${{ env.IMAGE_TAG }}
+          kubectl set image deployment/frontend -n skill-hub \
+            frontend=${{ env.REGISTRY }}/${{ github.repository }}/frontend:${{ env.IMAGE_TAG }}
+          kubectl rollout status deployment/router-api -n skill-hub
+          kubectl rollout status deployment/sync-worker -n skill-hub
+          kubectl rollout status deployment/admin-api -n skill-hub
+          kubectl rollout status deployment/frontend -n skill-hub
+
+      - name: Health check
+        run: |
+          sleep 10
+          kubectl port-forward svc/router-api -n skill-hub 8080:8080 &
+          PF_PID=$!
+          sleep 3
+          curl -f http://localhost:8080/health || echo "Health check warning"
+          kill $PF_PID 2>/dev/null || true
