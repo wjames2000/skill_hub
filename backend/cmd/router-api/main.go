@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -29,7 +30,10 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load("configs/config.yaml")
+	configPath := flag.String("config", "config.yaml", "path to config file")
+	flag.Parse()
+
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		panic("load config: " + err.Error())
 	}
