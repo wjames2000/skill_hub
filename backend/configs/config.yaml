@@ -61,3 +61,27 @@ semgrep:
   binary: "semgrep"
   rules: "p/default"
   timeout: 300
+
+milvus:
+  address: "localhost:19530"
+  user: ""
+  password: ""
+  db_name: "skillhub"
+
+embedding:
+  base_url: "http://localhost:11434/v1"
+  api_key: ""
+  model: "nomic-embed-text"
+  dims: 768
+
+llm:
+  base_url: "http://localhost:11434/v1"
+  api_key: ""
+  model: "qwen2.5:7b"
+  max_tokens: 1024
+  temperature: 0.1
+
+reranker:
+  base_url: "http://localhost:11434/v1"
+  api_key: ""
+  model: "bge-reranker-v2-m3"

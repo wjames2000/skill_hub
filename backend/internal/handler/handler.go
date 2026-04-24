@@ -14,6 +14,7 @@ func RegisterSearchRoutes(rg *gin.RouterGroup) {
 func RegisterRouterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/router/match", MatchRouter)
 	rg.POST("/router/execute", ExecuteRouter)
+	rg.POST("/router/feedback", FeedbackRouter)
 }
 
 func RegisterAuthRoutes(rg *gin.RouterGroup) {
@@ -36,8 +37,9 @@ func ListSkills(c *gin.Context)   { c.JSON(200, gin.H{"message": "ListSkills"}) 
 func GetSkill(c *gin.Context)     { c.JSON(200, gin.H{"message": "GetSkill"}) }
 func SearchSkills(c *gin.Context) { c.JSON(200, gin.H{"message": "SearchSkills"}) }
 
-func MatchRouter(c *gin.Context)   { c.JSON(200, gin.H{"message": "MatchRouter"}) }
-func ExecuteRouter(c *gin.Context) { c.JSON(200, gin.H{"message": "ExecuteRouter"}) }
+func MatchRouter(c *gin.Context)    { c.JSON(200, gin.H{"message": "MatchRouter"}) }
+func ExecuteRouter(c *gin.Context)  { c.JSON(200, gin.H{"message": "ExecuteRouter"}) }
+func FeedbackRouter(c *gin.Context) { c.JSON(200, gin.H{"message": "FeedbackRouter"}) }
 
 func Login(c *gin.Context)       { c.JSON(200, gin.H{"message": "Login"}) }
 func Register(c *gin.Context)    { c.JSON(200, gin.H{"message": "Register"}) }

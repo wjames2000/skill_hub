@@ -8,16 +8,20 @@ import (
 )
 
 type Config struct {
-	App     AppConfig     `mapstructure:"app"`
-	DB      DBConfig      `mapstructure:"db"`
-	Redis   RedisConfig   `mapstructure:"redis"`
-	Meili   MeiliConfig   `mapstructure:"meili"`
-	Minio   MinioConfig   `mapstructure:"minio"`
-	Consul  ConsulConfig  `mapstructure:"consul"`
-	GitHub  GitHubConfig  `mapstructure:"github"`
-	Sync    SyncConfig    `mapstructure:"sync"`
-	Asynq   AsynqConfig   `mapstructure:"asynq"`
-	Semgrep SemgrepConfig `mapstructure:"semgrep"`
+	App       AppConfig       `mapstructure:"app"`
+	DB        DBConfig        `mapstructure:"db"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	Meili     MeiliConfig     `mapstructure:"meili"`
+	Minio     MinioConfig     `mapstructure:"minio"`
+	Consul    ConsulConfig    `mapstructure:"consul"`
+	GitHub    GitHubConfig    `mapstructure:"github"`
+	Sync      SyncConfig      `mapstructure:"sync"`
+	Asynq     AsynqConfig     `mapstructure:"asynq"`
+	Semgrep   SemgrepConfig   `mapstructure:"semgrep"`
+	Milvus    MilvusConfig    `mapstructure:"milvus"`
+	Embedding EmbeddingConfig `mapstructure:"embedding"`
+	LLM       LLMConfig       `mapstructure:"llm"`
+	Reranker  RerankerConfig  `mapstructure:"reranker"`
 }
 
 type AppConfig struct {
@@ -85,6 +89,34 @@ type SemgrepConfig struct {
 	Binary  string `mapstructure:"binary"`
 	Rules   string `mapstructure:"rules"`
 	Timeout int    `mapstructure:"timeout"`
+}
+
+type MilvusConfig struct {
+	Address  string `mapstructure:"address"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	DBName   string `mapstructure:"db_name"`
+}
+
+type EmbeddingConfig struct {
+	BaseURL string `mapstructure:"base_url"`
+	APIKey  string `mapstructure:"api_key"`
+	Model   string `mapstructure:"model"`
+	Dims    int    `mapstructure:"dims"`
+}
+
+type LLMConfig struct {
+	BaseURL     string  `mapstructure:"base_url"`
+	APIKey      string  `mapstructure:"api_key"`
+	Model       string  `mapstructure:"model"`
+	MaxTokens   int     `mapstructure:"max_tokens"`
+	Temperature float64 `mapstructure:"temperature"`
+}
+
+type RerankerConfig struct {
+	BaseURL string `mapstructure:"base_url"`
+	APIKey  string `mapstructure:"api_key"`
+	Model   string `mapstructure:"model"`
 }
 
 func Load(path string) (*Config, error) {

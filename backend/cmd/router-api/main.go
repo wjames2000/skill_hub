@@ -10,15 +10,21 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hpds/skill-hub/internal/client/embedding"
+	"github.com/hpds/skill-hub/internal/client/llm"
+	"github.com/hpds/skill-hub/internal/client/reranker"
 	"github.com/hpds/skill-hub/internal/handler"
 	"github.com/hpds/skill-hub/internal/middleware"
+	milvusCli "github.com/hpds/skill-hub/internal/milvus"
+	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/internal/router"
+	"github.com/hpds/skill-hub/internal/service"
+	"github.com/hpds/skill-hub/internal/vectorizer"
 	"github.com/hpds/skill-hub/pkg/config"
 	"github.com/hpds/skill-hub/pkg/consul"
 	"github.com/hpds/skill-hub/pkg/db"
 	"github.com/hpds/skill-hub/pkg/logger"
 	mls "github.com/hpds/skill-hub/pkg/meilisearch"
-	"github.com/hpds/skill-hub/pkg/minio"
 	rds "github.com/hpds/skill-hub/pkg/redis"
 )
 
@@ -55,14 +61,6 @@ func main() {
 		logger.Info("meilisearch connected")
 	}
 
-	minioClient, err := minio.New(cfg.Minio.Endpoint, cfg.Minio.AccessKey, cfg.Minio.SecretKey, cfg.Minio.UseSSL, cfg.Minio.Bucket)
-	if err != nil {
-		logger.Warn("minio unavailable, file upload disabled", logger.String("error", err.Error()))
-		minioClient = nil
-	} else {
-		logger.Info("minio connected")
-	}
-
 	consulClient, err := consul.New(cfg.Consul.Addr, cfg.Consul.Token)
 	if err != nil {
 		logger.Warn("consul unavailable, service discovery disabled", logger.String("error", err.Error()))
@@ -79,6 +77,49 @@ func main() {
 		}
 	}
 
+	embedder := embedding.New(cfg.Embedding.BaseURL, cfg.Embedding.APIKey, cfg.Embedding.Model, cfg.Embedding.Dims)
+	logger.Info("embedding client initialized", logger.String("model", embedder.Model()))
+
+	var llmClient *llm.Client
+	if cfg.LLM.BaseURL != "" {
+		llmClient = llm.New(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, cfg.LLM.MaxTokens, cfg.LLM.Temperature)
+		logger.Info("llm client initialized", logger.String("model", llmClient.Model()))
+	}
+
+	var rerankerClient *reranker.Client
+	if cfg.Reranker.BaseURL != "" {
+		rerankerClient = reranker.New(cfg.Reranker.BaseURL, cfg.Reranker.APIKey, cfg.Reranker.Model)
+		logger.Info("reranker client initialized", logger.String("model", rerankerClient.Model()))
+	}
+
+	milvusCfg := milvusCli.Config{
+		Address:  cfg.Milvus.Address,
+		User:     cfg.Milvus.User,
+		Password: cfg.Milvus.Password,
+		DBName:   cfg.Milvus.DBName,
+	}
+	milvusClient, err := milvusCli.New(milvusCfg)
+	if err != nil {
+		logger.Warn("milvus unavailable, vector search disabled", logger.String("error", err.Error()))
+		milvusClient = nil
+	} else {
+		logger.Info("milvus client initialized")
+	}
+
+	skillRepo := repository.NewSkillRepo(dbEngine)
+	embRepo := repository.NewEmbeddingRepo(dbEngine)
+	logRepo := repository.NewRouterLogRepo(dbEngine)
+
+	vectorWorker := vectorizer.NewWorker(embedder, milvusClient, skillRepo, embRepo, 3)
+
+	vectorSvc := service.NewVectorService(
+		embedder, llmClient, milvusClient, skillRepo, embRepo, vectorWorker,
+	)
+
+	routerSvc := service.NewRouterService(
+		embedder, llmClient, rerankerClient, milvusClient, meiliClient, skillRepo, logRepo,
+	)
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -90,20 +131,24 @@ func main() {
 		r.Use(middleware.IPRateLimiter(redisClient, 100, time.Minute))
 	}
 
-	_ = dbEngine
-	_ = meiliClient
-	_ = minioClient
-
 	api := r.Group("/api/v1")
 	{
 		handler.RegisterSkillRoutes(api)
 		handler.RegisterSearchRoutes(api)
-		handler.RegisterRouterRoutes(api)
+
+		routerHandler := handler.NewRouterHandler(routerSvc)
+		routerHandler.RegisterRoutes(api)
+
 		handler.RegisterAuthRoutes(api)
 		handler.RegisterUserRoutes(api)
 	}
 
 	router.SetupRoutes(r)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	vectorSvc.StartWorker(ctx)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.App.Port),
@@ -122,8 +167,10 @@ func main() {
 	<-quit
 
 	logger.Info("shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	_ = srv.Shutdown(ctx)
+	vectorSvc.StopWorker()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	_ = srv.Shutdown(shutdownCtx)
 	logger.Sync()
 }
