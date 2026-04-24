@@ -2,11 +2,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
+	githubclient "github.com/hpds/skill-hub/internal/client/github"
+	"github.com/hpds/skill-hub/internal/repository"
+	"github.com/hpds/skill-hub/internal/service"
+	"github.com/hpds/skill-hub/internal/syncer"
 	"github.com/hpds/skill-hub/pkg/config"
 	"github.com/hpds/skill-hub/pkg/db"
 	"github.com/hpds/skill-hub/pkg/logger"
@@ -37,17 +43,119 @@ func main() {
 		logger.Info("redis connected")
 	}
 
-	_ = dbEngine
-	_ = redisClient
+	syncCfg := syncer.SyncConfig{
+		FullSyncCron:    cfg.Sync.FullSyncCron,
+		IncrementalCron: cfg.Sync.IncrementalCron,
+		IncrementalDays: cfg.Sync.IncrementalDays,
+		Concurrency:     cfg.Sync.Concurrency,
+		SyncTimeout:     cfg.Sync.SyncTimeout,
+		ScanEnabled:     cfg.Sync.ScanEnabled,
+	}
 
-	logger.Info("sync-worker ready, waiting for tasks...")
+	ghClient := githubclient.New(
+		cfg.GitHub.Tokens,
+		cfg.GitHub.MaxPerPage,
+		cfg.GitHub.RequestDelay,
+	)
+	logger.Info("github client initialized", logger.Int("tokens", len(cfg.GitHub.Tokens)))
+
+	skillRepo := repository.NewSkillRepo(dbEngine)
+	syncTaskRepo := repository.NewSyncTaskRepo(dbEngine)
+
+	scannerCfg := syncer.ScannerConfig{
+		Enabled: cfg.Semgrep.Enabled,
+		Binary:  cfg.Semgrep.Binary,
+		Rules:   cfg.Semgrep.Rules,
+		Timeout: cfg.Semgrep.Timeout,
+	}
+	scanner := syncer.NewSecurityScanner(scannerCfg)
+
+	topicDiscovery := syncer.NewTopicDiscovery(ghClient, cfg.GitHub.SearchTopics)
+	awesomeDiscovery := syncer.NewAwesomeDiscovery(ghClient)
+	discoveryMgr := syncer.NewDiscoveryManager(topicDiscovery, awesomeDiscovery)
+
+	queue, err := syncer.NewTaskQueue(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Asynq.Enabled)
+	if err != nil {
+		logger.Warn("task queue init failed", logger.String("error", err.Error()))
+		queue, _ = syncer.NewTaskQueue(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, false)
+	}
+	if queue != nil {
+		defer queue.Close()
+	}
+
+	orchestrator := syncer.NewSyncOrchestrator(
+		ghClient,
+		discoveryMgr,
+		skillRepo,
+		syncTaskRepo,
+		scanner,
+		queue,
+		syncCfg,
+	)
+
+	syncSvc := service.NewSyncService(
+		skillRepo,
+		syncTaskRepo,
+		orchestrator,
+		nil,
+		queue,
+		syncCfg,
+	)
+
+	scheduler := syncer.NewScheduler(syncTaskRepo, queue, syncCfg)
+	syncSvc.SetScheduler(scheduler)
+
+	if err := scheduler.Start(); err != nil {
+		logger.Warn("scheduler start failed", logger.String("error", err.Error()))
+	}
+
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if cfg.Asynq.Enabled {
+		go func() {
+			asynqSrv, err := syncer.NewSyncServer(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Asynq.Concurrency)
+			if err != nil {
+				logger.Fatal("asynq server init", logger.String("error", err.Error()))
+			}
+
+			mux := asynq.NewServeMux()
+			mux.HandleFunc(syncer.TypeFullSync, func(ctx context.Context, t *asynq.Task) error {
+				return syncer.HandleSyncTask(ctx, t, func(ctx context.Context, p syncer.SyncTaskPayload) error {
+					return syncSvc.HandleSyncTask(ctx, p)
+				})
+			})
+			mux.HandleFunc(syncer.TypeIncrementalSync, func(ctx context.Context, t *asynq.Task) error {
+				return syncer.HandleSyncTask(ctx, t, func(ctx context.Context, p syncer.SyncTaskPayload) error {
+					return syncSvc.HandleSyncTask(ctx, p)
+				})
+			})
+			mux.HandleFunc(syncer.TypeScanSkill, func(ctx context.Context, t *asynq.Task) error {
+				return syncer.HandleScanTask(ctx, t, func(ctx context.Context, p syncer.ScanTaskPayload) error {
+					return syncSvc.HandleScanTask(ctx, p)
+				})
+			})
+
+			logger.Info("asynq server starting",
+				logger.Int("concurrency", cfg.Asynq.Concurrency))
+
+			if err := asynqSrv.Run(mux); err != nil {
+				logger.Error("asynq server error", logger.String("error", err.Error()))
+			}
+		}()
+	}
+
+	logger.Info(fmt.Sprintf("sync-worker ready | scheduler: %s/%s | queue: %v | scan: %v",
+		syncCfg.FullSyncCron, syncCfg.IncrementalCron, cfg.Asynq.Enabled, cfg.Semgrep.Enabled))
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 
 	logger.Info("sync-worker shutting down...")
-	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	scheduler.Stop()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	_ = shutdownCtx
 	logger.Sync()
 }

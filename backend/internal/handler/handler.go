@@ -30,9 +30,6 @@ func RegisterUserRoutes(rg *gin.RouterGroup) {
 }
 
 func RegisterAdminRoutes(rg *gin.RouterGroup) {
-	rg.GET("/sync/status", SyncStatus)
-	rg.POST("/sync/trigger", TriggerSync)
-	rg.GET("/stats", AdminStats)
 }
 
 func ListSkills(c *gin.Context)   { c.JSON(200, gin.H{"message": "ListSkills"}) }
@@ -42,15 +39,11 @@ func SearchSkills(c *gin.Context) { c.JSON(200, gin.H{"message": "SearchSkills"}
 func MatchRouter(c *gin.Context)   { c.JSON(200, gin.H{"message": "MatchRouter"}) }
 func ExecuteRouter(c *gin.Context) { c.JSON(200, gin.H{"message": "ExecuteRouter"}) }
 
-func Login(c *gin.Context)      { c.JSON(200, gin.H{"message": "Login"}) }
-func Register(c *gin.Context)   { c.JSON(200, gin.H{"message": "Register"}) }
+func Login(c *gin.Context)       { c.JSON(200, gin.H{"message": "Login"}) }
+func Register(c *gin.Context)    { c.JSON(200, gin.H{"message": "Register"}) }
 func GitHubOAuth(c *gin.Context) { c.JSON(200, gin.H{"message": "GitHubOAuth"}) }
 
-func GetProfile(c *gin.Context)      { c.JSON(200, gin.H{"message": "GetProfile"}) }
-func AddFavorite(c *gin.Context)      { c.JSON(200, gin.H{"message": "AddFavorite"}) }
-func RemoveFavorite(c *gin.Context)   { c.JSON(200, gin.H{"message": "RemoveFavorite"}) }
-func AddReview(c *gin.Context)        { c.JSON(200, gin.H{"message": "AddReview"}) }
-
-func SyncStatus(c *gin.Context)   { c.JSON(200, gin.H{"message": "SyncStatus"}) }
-func TriggerSync(c *gin.Context)  { c.JSON(200, gin.H{"message": "TriggerSync"}) }
-func AdminStats(c *gin.Context)   { c.JSON(200, gin.H{"message": "AdminStats"}) }
+func GetProfile(c *gin.Context)     { c.JSON(200, gin.H{"message": "GetProfile"}) }
+func AddFavorite(c *gin.Context)    { c.JSON(200, gin.H{"message": "AddFavorite"}) }
+func RemoveFavorite(c *gin.Context) { c.JSON(200, gin.H{"message": "RemoveFavorite"}) }
+func AddReview(c *gin.Context)      { c.JSON(200, gin.H{"message": "AddReview"}) }

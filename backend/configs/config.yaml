@@ -30,3 +30,34 @@ minio:
 consul:
   addr: "localhost:8500"
   token: ""
+
+github:
+  tokens:
+    - ""
+  search_topics:
+    - "skill"
+    - "ai-assistant"
+    - "copilot-plugin"
+    - "cursor-rules"
+    - "cline-plugin"
+    - "windsurf-plugin"
+  max_per_page: 100
+  request_delay: 200
+
+sync:
+  full_sync_cron: "0 0 3 * * *"
+  incremental_cron: "0 */6 * * *"
+  incremental_days: 7
+  concurrency: 5
+  sync_timeout: 1800
+  scan_enabled: false
+
+asynq:
+  enabled: true
+  concurrency: 10
+
+semgrep:
+  enabled: false
+  binary: "semgrep"
+  rules: "p/default"
+  timeout: 300

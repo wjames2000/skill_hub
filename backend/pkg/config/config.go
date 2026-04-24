@@ -8,12 +8,16 @@ import (
 )
 
 type Config struct {
-	App    AppConfig    `mapstructure:"app"`
-	DB     DBConfig     `mapstructure:"db"`
-	Redis  RedisConfig  `mapstructure:"redis"`
-	Meili  MeiliConfig  `mapstructure:"meili"`
-	Minio  MinioConfig  `mapstructure:"minio"`
-	Consul ConsulConfig `mapstructure:"consul"`
+	App     AppConfig     `mapstructure:"app"`
+	DB      DBConfig      `mapstructure:"db"`
+	Redis   RedisConfig   `mapstructure:"redis"`
+	Meili   MeiliConfig   `mapstructure:"meili"`
+	Minio   MinioConfig   `mapstructure:"minio"`
+	Consul  ConsulConfig  `mapstructure:"consul"`
+	GitHub  GitHubConfig  `mapstructure:"github"`
+	Sync    SyncConfig    `mapstructure:"sync"`
+	Asynq   AsynqConfig   `mapstructure:"asynq"`
+	Semgrep SemgrepConfig `mapstructure:"semgrep"`
 }
 
 type AppConfig struct {
@@ -53,6 +57,34 @@ type MinioConfig struct {
 type ConsulConfig struct {
 	Addr  string `mapstructure:"addr"`
 	Token string `mapstructure:"token"`
+}
+
+type GitHubConfig struct {
+	Tokens       []string `mapstructure:"tokens"`
+	SearchTopics []string `mapstructure:"search_topics"`
+	MaxPerPage   int      `mapstructure:"max_per_page"`
+	RequestDelay int      `mapstructure:"request_delay"`
+}
+
+type SyncConfig struct {
+	FullSyncCron    string `mapstructure:"full_sync_cron"`
+	IncrementalCron string `mapstructure:"incremental_cron"`
+	IncrementalDays int    `mapstructure:"incremental_days"`
+	Concurrency     int    `mapstructure:"concurrency"`
+	SyncTimeout     int    `mapstructure:"sync_timeout"`
+	ScanEnabled     bool   `mapstructure:"scan_enabled"`
+}
+
+type AsynqConfig struct {
+	Enabled     bool `mapstructure:"enabled"`
+	Concurrency int  `mapstructure:"concurrency"`
+}
+
+type SemgrepConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Binary  string `mapstructure:"binary"`
+	Rules   string `mapstructure:"rules"`
+	Timeout int    `mapstructure:"timeout"`
 }
 
 func Load(path string) (*Config, error) {

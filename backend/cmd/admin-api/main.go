@@ -12,6 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hpds/skill-hub/internal/handler"
 	"github.com/hpds/skill-hub/internal/middleware"
+	"github.com/hpds/skill-hub/internal/repository"
+	"github.com/hpds/skill-hub/internal/service"
+	"github.com/hpds/skill-hub/internal/syncer"
 	"github.com/hpds/skill-hub/pkg/config"
 	"github.com/hpds/skill-hub/pkg/consul"
 	"github.com/hpds/skill-hub/pkg/db"
@@ -67,10 +70,22 @@ func main() {
 	r.Use(middleware.StructuredLog())
 	r.Use(middleware.Recovery())
 
-	_ = dbEngine
+	skillRepo := repository.NewSkillRepo(dbEngine)
+	syncTaskRepo := repository.NewSyncTaskRepo(dbEngine)
+
+	syncSvc := service.NewSyncService(
+		skillRepo,
+		syncTaskRepo,
+		nil,
+		nil,
+		nil,
+		syncer.SyncConfig{},
+	)
 
 	admin := r.Group("/api/v1/admin")
 	{
+		syncAdmin := handler.NewSyncAdminHandler(syncSvc)
+		syncAdmin.RegisterRoutes(admin)
 		handler.RegisterAdminRoutes(admin)
 	}
 
