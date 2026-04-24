@@ -72,6 +72,10 @@ func main() {
 
 	skillRepo := repository.NewSkillRepo(dbEngine)
 	syncTaskRepo := repository.NewSyncTaskRepo(dbEngine)
+	userRepo := repository.NewUserRepo(dbEngine)
+	categoryRepo := repository.NewCategoryRepo(dbEngine)
+	favoriteRepo := repository.NewFavoriteRepo(dbEngine)
+	reviewRepo := repository.NewReviewRepo(dbEngine)
 
 	syncSvc := service.NewSyncService(
 		skillRepo,
@@ -83,10 +87,13 @@ func main() {
 	)
 
 	admin := r.Group("/api/v1/admin")
+	admin.Use(middleware.AdminRequired(cfg.JWT.Secret))
 	{
 		syncAdmin := handler.NewSyncAdminHandler(syncSvc)
 		syncAdmin.RegisterRoutes(admin)
-		handler.RegisterAdminRoutes(admin)
+
+		adminHandler := handler.NewAdminHandler(skillRepo, categoryRepo, userRepo, favoriteRepo, reviewRepo)
+		adminHandler.RegisterRoutes(admin)
 	}
 
 	srv := &http.Server{

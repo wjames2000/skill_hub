@@ -109,6 +109,11 @@ func main() {
 	skillRepo := repository.NewSkillRepo(dbEngine)
 	embRepo := repository.NewEmbeddingRepo(dbEngine)
 	logRepo := repository.NewRouterLogRepo(dbEngine)
+	userRepo := repository.NewUserRepo(dbEngine)
+	apiKeyRepo := repository.NewAPIKeyRepo(dbEngine)
+	favoriteRepo := repository.NewFavoriteRepo(dbEngine)
+	reviewRepo := repository.NewReviewRepo(dbEngine)
+	categoryRepo := repository.NewCategoryRepo(dbEngine)
 
 	vectorWorker := vectorizer.NewWorker(embedder, milvusClient, skillRepo, embRepo, 3)
 
@@ -131,16 +136,38 @@ func main() {
 		r.Use(middleware.IPRateLimiter(redisClient, 100, time.Minute))
 	}
 
+	r.Use(middleware.OptionalAuth(cfg.JWT.Secret))
+
 	api := r.Group("/api/v1")
 	{
-		handler.RegisterSkillRoutes(api)
-		handler.RegisterSearchRoutes(api)
+		skillHandler := handler.NewSkillHandler(skillRepo, categoryRepo, meiliClient)
+		skillHandler.RegisterRoutes(api)
 
 		routerHandler := handler.NewRouterHandler(routerSvc)
 		routerHandler.RegisterRoutes(api)
 
-		handler.RegisterAuthRoutes(api)
-		handler.RegisterUserRoutes(api)
+		authHandler := handler.NewAuthHandler(userRepo, apiKeyRepo, cfg.JWT.Secret, cfg.JWT.ExpireHour)
+		authHandler.RegisterRoutes(api)
+
+		auth := api.Group("")
+		auth.Use(middleware.AuthRequired(cfg.JWT.Secret))
+		{
+			userHandler := handler.NewUserHandler(userRepo, favoriteRepo, reviewRepo, apiKeyRepo, skillRepo)
+			userHandler.RegisterRoutes(auth)
+
+			categoryHandler := handler.NewCategoryHandler(categoryRepo)
+			categoryHandler.RegisterRoutes(auth)
+
+			statsHandler := handler.NewStatsHandler(skillRepo, categoryRepo, favoriteRepo)
+			statsHandler.RegisterRoutes(auth)
+		}
+	}
+
+	pluginAPI := r.Group("/api/v1")
+	pluginAPI.Use(middleware.APIKeyAuth(apiKeyRepo))
+	{
+		pluginHandler := handler.NewPluginHandler(skillRepo, categoryRepo, meiliClient, favoriteRepo, reviewRepo)
+		pluginHandler.RegisterRoutes(pluginAPI)
 	}
 
 	router.SetupRoutes(r)

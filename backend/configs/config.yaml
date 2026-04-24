@@ -4,6 +4,10 @@ app:
   port: 8080
   version: 1.0.0
 
+jwt:
+  secret: "skill-hub-jwt-secret-change-in-production"
+  expire_hour: 72
+
 db:
   driver: postgres
   dsn: "host=localhost port=5432 user=skillhub password=skillhub dbname=skillhub sslmode=disable"

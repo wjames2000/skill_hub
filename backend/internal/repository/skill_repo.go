@@ -109,9 +109,27 @@ func (r *SkillRepo) UpdateScanResult(id int64, passed bool, report string) error
 	return err
 }
 
+func (r *SkillRepo) ListQuery() *xorm.Session {
+	return r.db.Where("1=1")
+}
+
+func (r *SkillRepo) UpdateScore(id int64, score float64) error {
+	_, err := r.db.ID(id).Cols("score").Update(&model.Skill{Score: score})
+	return err
+}
+
 func (r *SkillRepo) IncrementInstalls(id int64) error {
 	_, err := r.db.Exec("UPDATE skills SET installs = installs + 1 WHERE id = ?", id)
 	return err
+}
+
+func (r *SkillRepo) ListByIDs(ids []int64) ([]*model.Skill, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var skills []*model.Skill
+	err := r.db.In("id", ids).Find(&skills)
+	return skills, err
 }
 
 func (r *SkillRepo) SearchByName(name string, limit int) ([]*model.Skill, error) {

@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	App       AppConfig       `mapstructure:"app"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
 	DB        DBConfig        `mapstructure:"db"`
 	Redis     RedisConfig     `mapstructure:"redis"`
 	Meili     MeiliConfig     `mapstructure:"meili"`
@@ -29,6 +30,11 @@ type AppConfig struct {
 	Env     string `mapstructure:"env"`
 	Port    int    `mapstructure:"port"`
 	Version string `mapstructure:"version"`
+}
+
+type JWTConfig struct {
+	Secret     string `mapstructure:"secret"`
+	ExpireHour int    `mapstructure:"expire_hour"`
 }
 
 type DBConfig struct {
