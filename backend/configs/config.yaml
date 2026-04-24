@@ -1,0 +1,32 @@
+app:
+  name: skill-hub
+  env: development
+  port: 8080
+  version: 1.0.0
+
+db:
+  driver: postgres
+  dsn: "host=localhost port=5432 user=skillhub password=skillhub dbname=skillhub sslmode=disable"
+  max_open: 25
+  max_idle: 10
+  max_lifetime: 30m
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+meili:
+  host: "http://localhost:7700"
+  api_key: ""
+
+minio:
+  endpoint: "localhost:9000"
+  access_key: "skillhub"
+  secret_key: "skillhub123"
+  use_ssl: false
+  bucket: "skills"
+
+consul:
+  addr: "localhost:8500"
+  token: ""
