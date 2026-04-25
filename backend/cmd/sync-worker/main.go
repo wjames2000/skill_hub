@@ -11,6 +11,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	githubclient "github.com/hpds/skill-hub/internal/client/github"
+	"github.com/hpds/skill-hub/internal/client/llm"
 	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/internal/service"
 	"github.com/hpds/skill-hub/internal/syncer"
@@ -69,6 +70,13 @@ func main() {
 
 	skillRepo := repository.NewSkillRepo(dbEngine)
 	syncTaskRepo := repository.NewSyncTaskRepo(dbEngine)
+	categoryRepo := repository.NewCategoryRepo(dbEngine)
+
+	var llmClient *llm.Client
+	if cfg.LLM.BaseURL != "" {
+		llmClient = llm.New(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, cfg.LLM.MaxTokens, cfg.LLM.Temperature)
+		logger.Info("llm client initialized", logger.String("model", llmClient.Model()))
+	}
 
 	scannerCfg := syncer.ScannerConfig{
 		Enabled: cfg.Semgrep.Enabled,
@@ -101,6 +109,10 @@ func main() {
 		queue,
 		syncCfg,
 	)
+	orchestrator.SetCategoryRepo(categoryRepo)
+	if llmClient != nil {
+		orchestrator.SetLLMClient(llmClient)
+	}
 
 	syncSvc := service.NewSyncService(
 		skillRepo,

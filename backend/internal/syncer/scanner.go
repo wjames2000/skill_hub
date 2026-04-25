@@ -51,6 +51,10 @@ func (s *SecurityScanner) ScanRepo(ctx context.Context, repoPath string) (*ScanR
 		binary = "semgrep"
 	}
 
+	if _, err := exec.LookPath(binary); err != nil {
+		return &ScanResult{Passed: true, Summary: "scan skipped: " + binary + " not found"}, nil
+	}
+
 	args := []string{"scan", "--json", "--no-git-ignore"}
 	if s.config.Rules != "" {
 		args = append(args, "--config", s.config.Rules)

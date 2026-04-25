@@ -1,9 +1,9 @@
 import { api } from './client';
 import { mapSkill, mapSkillList } from './mappers';
-import type { Review, Skill, SkillDetail, SearchFilters } from '@/src/types';
+import type { Review, Skill, SkillDetail, SearchFilters, Category } from '@/src/types';
 
 export const skillsApi = {
-  list: async (params?: { page?: number; pageSize?: number; category?: string; sort?: string }) => {
+  list: async (params?: { page?: number; pageSize?: number; category?: string; sort?: string; tags?: string[] }) => {
     const res = await api.get<{ skills: Record<string, unknown>[]; total: number; page: number; size: number }>('/skills', params as Record<string, string | number | boolean | undefined>);
     return { data: mapSkillList(res.skills), total: res.total, page: res.page, pageSize: res.size };
   },
@@ -21,7 +21,15 @@ export const skillsApi = {
   },
 
   search: async (filters: SearchFilters) => {
-    const res = await api.post<{ skills: Record<string, unknown>[]; total: number; page: number; size: number }>('/skills/search', filters);
+    const body: Record<string, unknown> = { query: filters.query, page: filters.page, pageSize: filters.pageSize };
+    if (filters.category) body.category = filters.category;
+    if (filters.tags && filters.tags.length > 0) body.tags = filters.tags;
+    if (filters.safe) body.safe = true;
+    if (filters.sort) {
+      const sortMap: Record<string, string> = { relevance: '', rating: 'score', downloads: 'installs' };
+      body.sort = sortMap[filters.sort] || '';
+    }
+    const res = await api.post<{ skills: Record<string, unknown>[]; total: number; page: number; size: number }>('/skills/search', body);
     return { data: mapSkillList(res.skills), total: res.total, page: res.page, pageSize: res.size };
   },
 
@@ -30,8 +38,18 @@ export const skillsApi = {
     return mapSkillList(res.skills);
   },
 
-  getCategories: () =>
-    api.get<{ id: number; name: string; icon: string; count: number }[]>('/skills/categories'),
+  getCategories: async () => {
+    const raw = await api.get<{ id: number; name: string; slug: string; icon: string; count: number; children: Record<string, unknown>[] }[]>('/skills/categories');
+    const mapNode = (c: typeof raw[number]): Category => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon || 'category',
+      count: c.count,
+      children: (c.children || []).map(mapNode),
+    });
+    return raw.map(mapNode);
+  },
 
   getLatest: async () => {
     const res = await api.get<{ skills: Record<string, unknown>[] }>('/skills/latest');

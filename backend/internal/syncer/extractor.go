@@ -119,23 +119,40 @@ func (e *SkillExtractor) calculateScore(stars, forks int) float64 {
 
 func (e *SkillExtractor) inferCategory(topics []string, description string) string {
 	categoryMap := map[string]string{
-		"ai": "ai", "artificial-intelligence": "ai", "machine-learning": "ai",
-		"nlp": "ai", "llm": "ai", "gpt": "ai", "claude": "ai", "copilot": "ai",
-		"chatgpt": "ai", "openai": "ai", "agent": "ai", "rag": "ai",
+		"ai": "ai-agent", "artificial-intelligence": "ai-agent", "machine-learning": "ai-agent",
+		"nlp": "ai-agent", "llm": "ai-agent", "gpt": "ai-agent", "claude": "ai-agent",
+		"copilot": "ai-agent", "chatgpt": "ai-agent", "openai": "ai-agent",
+		"agent": "ai-agent", "rag": "ai-agent", "prompt": "ai-agent",
 
-		"developer-tools": "developer-tools", "devtools": "developer-tools",
-		"cli": "developer-tools", "terminal": "developer-tools",
-		"productivity": "productivity", "automation": "productivity",
+		"developer-tools": "software-engineering", "devtools": "software-engineering",
+		"cli": "software-engineering", "terminal": "software-engineering",
+		"code-review": "software-engineering", "testing": "software-engineering",
+		"deploy": "software-engineering", "ci-cd": "software-engineering",
+		"scaffold": "software-engineering", "boilerplate": "software-engineering",
+		"template": "software-engineering", "code-generator": "software-engineering",
 
-		"code-review": "code-review", "testing": "testing",
-		"documentation": "documentation", "docs": "documentation",
-		"security": "security",
+		"content": "content-creation", "writing": "content-creation",
+		"copywriting": "content-creation", "blog": "content-creation",
+		"documentation": "content-creation", "docs": "content-creation",
+		"markdown": "content-creation", "translation": "information-processing",
+		"translate": "information-processing",
 
-		"database": "database", "data": "database",
-		"monitoring": "monitoring", "observability": "monitoring",
+		"data": "information-processing", "database": "information-processing",
+		"analytics": "information-processing", "etl": "information-processing",
+		"crawler": "information-processing", "scraper": "information-processing",
+		"visualization": "information-processing", "report": "information-processing",
 
-		"frontend": "frontend", "react": "frontend", "vue": "frontend",
-		"backend": "backend", "api": "backend", "server": "backend",
+		"security": "infrastructure", "monitoring": "infrastructure",
+		"observability": "infrastructure", "devops": "infrastructure",
+		"kubernetes": "infrastructure", "docker": "infrastructure",
+
+		"collaboration": "team-collaboration", "workflow": "team-collaboration",
+		"project-management": "team-collaboration", "sprint": "team-collaboration",
+		"knowledge": "team-collaboration", "wiki": "team-collaboration",
+
+		"reference": "reference-materials", "tutorial": "reference-materials",
+		"guide": "reference-materials", "sdk": "reference-materials",
+		"rule": "reference-materials", "spec": "reference-materials",
 	}
 
 	for _, topic := range topics {
@@ -154,7 +171,7 @@ func (e *SkillExtractor) inferCategory(topics []string, description string) stri
 		}
 	}
 
-	return "uncategorized"
+	return "reference-materials"
 }
 
 func toLower(s string) string {

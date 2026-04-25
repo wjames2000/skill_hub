@@ -27,6 +27,8 @@ export function mapSkill(raw: Record<string, unknown>): Skill {
     id: raw.id as number,
     title: (raw.display_name || raw.name) as string,
     description: (raw.description || '') as string,
+    zhDescription: (raw.zh_description || '') as string,
+    enDescription: (raw.en_description || '') as string,
     author: (raw.author || '') as string,
     icon: iconMap[raw.language as string] || 'extension',
     iconColor: '',

@@ -2,6 +2,8 @@ export interface Skill {
   id: number;
   title: string;
   description: string;
+  zhDescription: string;
+  enDescription: string;
   author: string;
   icon: string;
   iconColor: string;
@@ -46,9 +48,13 @@ export interface Review {
 export interface Category {
   id: number;
   name: string;
+  slug: string;
   icon: string;
   count: number;
+  children: Category[];
 }
+
+export type FlatCategory = Omit<Category, 'children'>;
 
 export interface Stats {
   totalSkills: number;
@@ -88,6 +94,7 @@ export interface PaginatedResponse<T> {
 export interface SearchFilters {
   query: string;
   category?: string;
+  tags?: string[];
   source?: string;
   safe?: boolean;
   sort?: 'relevance' | 'rating' | 'downloads';

@@ -3,9 +3,13 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	githubclient "github.com/hpds/skill-hub/internal/client/github"
+	"github.com/hpds/skill-hub/internal/client/llm"
 	"github.com/hpds/skill-hub/internal/model"
 	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/pkg/logger"
@@ -27,9 +31,19 @@ type SyncOrchestrator struct {
 	extractor    *SkillExtractor
 	skillRepo    *repository.SkillRepo
 	syncTaskRepo *repository.SyncTaskRepo
+	categoryRepo *repository.CategoryRepo
+	llmClient    *llm.Client
 	scanner      *SecurityScanner
 	queue        *TaskQueue
 	config       SyncConfig
+}
+
+func (s *SyncOrchestrator) SetCategoryRepo(repo *repository.CategoryRepo) {
+	s.categoryRepo = repo
+}
+
+func (s *SyncOrchestrator) SetLLMClient(cli *llm.Client) {
+	s.llmClient = cli
 }
 
 type SkillMetadataParser struct{}
@@ -207,6 +221,8 @@ func (s *SyncOrchestrator) ExecuteIncrementalSync(ctx context.Context, taskID in
 		readme, _ := s.githubClient.GetReadme(taskCtx, skill.RepoOwner, skill.RepoName, skill.DefaultBranch)
 
 		updatedSkill := s.extractor.Extract(repoInfo, parsed, readme)
+		s.reconcileCategory(updatedSkill)
+		s.translateDescription(taskCtx, updatedSkill)
 		isNew, err := s.skillRepo.Upsert(updatedSkill)
 		if err != nil {
 			logger.Warn("incremental: upsert failed",
@@ -278,6 +294,9 @@ func (s *SyncOrchestrator) processRepo(ctx context.Context, repo DiscoveredRepo,
 
 	skillModel := s.extractor.Extract(repoInfo, parsed, readme)
 
+	s.reconcileCategory(skillModel)
+	s.translateDescription(ctx, skillModel)
+
 	if parsed != nil && parsed.Metadata != nil {
 		skillModel.SkillFileSHA = content.SHA
 		skillModel.SkillPath = "SKILL.md"
@@ -296,11 +315,8 @@ func (s *SyncOrchestrator) processRepo(ctx context.Context, repo DiscoveredRepo,
 	_ = s.syncTaskRepo.Update(task)
 
 	if s.config.ScanEnabled && s.scanner != nil {
-		cloneDir := fmt.Sprintf("/tmp/skill-scan/%s", repo.FullName)
-		_ = cloneDir
-
 		if s.queue.enabled {
-			_ = s.queue.EnqueueScan(skillModel.ID, cloneDir, repo.FullName)
+			_ = s.queue.EnqueueScan(skillModel.ID, "", skillModel.Repository)
 		} else {
 			s.runLocalScan(ctx, skillModel)
 		}
@@ -313,14 +329,125 @@ func (s *SyncOrchestrator) Scanner() *SecurityScanner {
 	return s.scanner
 }
 
-func (s *SyncOrchestrator) runLocalScan(ctx context.Context, skill *model.Skill) {
-	result, err := s.scanner.ScanRepo(ctx, "")
-	if err != nil {
-		logger.Warn("scan failed", logger.String("repo", skill.Repository), logger.String("error", err.Error()))
+func (s *SyncOrchestrator) reconcileCategory(skill *model.Skill) {
+	if s.categoryRepo == nil || skill.Category == "" {
+		return
+	}
+	cat, err := s.categoryRepo.GetBySlug(skill.Category)
+	if err != nil || cat == nil {
+		return
+	}
+	skill.CategoryID = cat.ID
+}
+
+func (s *SyncOrchestrator) translateDescription(ctx context.Context, skill *model.Skill) {
+	if skill.Description == "" {
 		return
 	}
 
-	_ = s.skillRepo.UpdateScanResult(skill.ID, result.Passed, result.Summary)
+	bothEmpty := skill.ZhDescription == "" && skill.EnDescription == ""
+	hasZH := skill.ZhDescription != ""
+	hasEN := skill.EnDescription != ""
+
+	if bothEmpty && s.llmClient != nil {
+		prompt := fmt.Sprintf(`Translate the following text to Chinese. Return ONLY the translation, no explanations or notes.
+
+Text: %s`, skill.Description)
+		zh, err := s.llmClient.Chat("You are a professional translator.", prompt)
+		if err != nil {
+			logger.Warn("translate description to zh failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			skill.ZhDescription = skill.Description
+		} else {
+			skill.ZhDescription = strings.TrimSpace(zh)
+		}
+
+		prompt = fmt.Sprintf(`Translate the following text to English. Return ONLY the translation, no explanations or notes.
+
+Text: %s`, skill.Description)
+		en, err := s.llmClient.Chat("You are a professional translator.", prompt)
+		if err != nil {
+			logger.Warn("translate description to en failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			skill.EnDescription = skill.Description
+		} else {
+			skill.EnDescription = strings.TrimSpace(en)
+		}
+		return
+	}
+
+	if bothEmpty {
+		skill.ZhDescription = skill.Description
+		skill.EnDescription = skill.Description
+		return
+	}
+
+	if s.llmClient == nil {
+		return
+	}
+
+	if hasZH && hasEN {
+		return
+	}
+
+	if hasZH && !hasEN {
+		prompt := fmt.Sprintf(`Translate the following Chinese text to English. Return ONLY the translation, no explanations or notes.
+
+Chinese: %s`, skill.ZhDescription)
+		en, err := s.llmClient.Chat("You are a professional translator. Translate Chinese to English accurately.", prompt)
+		if err != nil {
+			logger.Warn("translate zh->en failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			return
+		}
+		skill.EnDescription = strings.TrimSpace(en)
+		return
+	}
+
+	if hasEN && !hasZH {
+		prompt := fmt.Sprintf(`Translate the following English text to Chinese. Return ONLY the translation, no explanations or notes.
+
+English: %s`, skill.EnDescription)
+		zh, err := s.llmClient.Chat("You are a professional translator. Translate English to Chinese accurately.", prompt)
+		if err != nil {
+			logger.Warn("translate en->zh failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			return
+		}
+		skill.ZhDescription = strings.TrimSpace(zh)
+	}
+}
+
+func (s *SyncOrchestrator) runLocalScan(ctx context.Context, skill *model.Skill) {
+	if err := s.ScanSkill(ctx, skill.ID, skill.RepoOwner, skill.RepoName, skill.Repository); err != nil {
+		logger.Warn("scan failed", logger.String("repo", skill.Repository), logger.String("error", err.Error()))
+	}
+}
+
+func (s *SyncOrchestrator) ScanSkill(ctx context.Context, skillID int64, owner, repo, fullName string) error {
+	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
+	cloneDir := fmt.Sprintf("/tmp/skill-scan/%s", fullName)
+
+	if err := os.RemoveAll(cloneDir); err != nil {
+		logger.Warn("failed to clean clone dir", logger.String("dir", cloneDir))
+	}
+
+	cmd := exec.CommandContext(ctx, "git", "clone", "--depth=1", cloneURL, cloneDir)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		logger.Warn("git clone failed",
+			logger.String("repo", fullName),
+			logger.String("error", err.Error()),
+			logger.String("output", string(output)))
+		return s.skillRepo.UpdateScanResult(skillID, true, "scan skipped: clone failed")
+	}
+	defer func() {
+		if err := os.RemoveAll(cloneDir); err != nil {
+			logger.Warn("failed to remove clone dir", logger.String("dir", cloneDir))
+		}
+	}()
+
+	result, err := s.scanner.ScanRepo(ctx, cloneDir)
+	if err != nil {
+		return fmt.Errorf("scan repo: %w", err)
+	}
+
+	return s.skillRepo.UpdateScanResult(skillID, result.Passed, result.Summary)
 }
 
 func (s *SyncOrchestrator) SyncSingleRepo(ctx context.Context, owner, repo, fullName string) error {
@@ -342,6 +469,9 @@ func (s *SyncOrchestrator) SyncSingleRepo(ctx context.Context, owner, repo, full
 	readme, _ := s.githubClient.GetReadme(ctx, owner, repo, repoInfo.DefaultBranch)
 
 	skillModel := s.extractor.Extract(repoInfo, parsed, readme)
+
+	s.reconcileCategory(skillModel)
+	s.translateDescription(ctx, skillModel)
 
 	_, err = s.skillRepo.Upsert(skillModel)
 	if err != nil {

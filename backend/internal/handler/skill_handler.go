@@ -27,6 +27,7 @@ func (h *SkillHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/skills", h.ListSkills)
 	rg.GET("/skills/trending", h.ListTrendingSkills)
 	rg.GET("/skills/latest", h.ListLatestSkills)
+	rg.GET("/skills/categories", h.ListCategories)
 	rg.GET("/skills/:id", h.GetSkill)
 	rg.POST("/skills/search", h.SearchSkills)
 }
@@ -92,6 +93,16 @@ func (h *SkillHandler) ListLatestSkills(c *gin.Context) {
 	h.ListSkills(c)
 }
 
+func (h *SkillHandler) ListCategories(c *gin.Context) {
+	tree, err := h.categoryRepo.GetTree()
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+
+	response.Success(c, tree)
+}
+
 func (h *SkillHandler) GetSkill(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -115,9 +126,13 @@ func (h *SkillHandler) GetSkill(c *gin.Context) {
 
 func (h *SkillHandler) SearchSkills(c *gin.Context) {
 	var req struct {
-		Query    string `json:"query" binding:"required"`
-		Page     int    `json:"page"`
-		PageSize int    `json:"page_size"`
+		Query    string   `json:"query" binding:"required"`
+		Page     int      `json:"page"`
+		PageSize int      `json:"page_size"`
+		Category string   `json:"category"`
+		Tags     []string `json:"tags"`
+		Safe     bool     `json:"safe"`
+		Sort     string   `json:"sort"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, errno.ParamError)
@@ -131,14 +146,43 @@ func (h *SkillHandler) SearchSkills(c *gin.Context) {
 	}
 
 	if h.meiliCli == nil {
-		skills, err := h.skillRepo.SearchByName(req.Query, req.PageSize)
+		sess := h.skillRepo.ListQuery().Where("status = ?", model.SkillStatusActive)
+
+		if req.Query != "" {
+			sess = sess.Where("(name LIKE ? OR display_name LIKE ?)", "%"+req.Query+"%", "%"+req.Query+"%")
+		}
+		if req.Category != "" {
+			sess = sess.Where("category = ?", req.Category)
+		}
+		for _, tag := range req.Tags {
+			sess = sess.Where("JSON_CONTAINS(topics, ?) OR JSON_CONTAINS(tags, ?)", `"`+tag+`"`, `"`+tag+`"`)
+		}
+		if req.Safe {
+			sess = sess.Where("scan_passed = ?", true)
+		}
+
+		switch req.Sort {
+		case "installs":
+			sess = sess.Desc("installs")
+		case "created_at":
+			sess = sess.Desc("created_at")
+		case "score":
+			sess = sess.Desc("score")
+		case "name":
+			sess = sess.Asc("name")
+		default:
+			sess = sess.Desc("stars")
+		}
+
+		var skills []*model.Skill
+		total, err := sess.Limit(req.PageSize, (req.Page-1)*req.PageSize).FindAndCount(&skills)
 		if err != nil {
 			response.Error(c, errno.DBError)
 			return
 		}
 		response.Success(c, gin.H{
 			"skills": skills,
-			"total":  len(skills),
+			"total":  total,
 			"page":   req.Page,
 			"size":   req.PageSize,
 		})

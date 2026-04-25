@@ -1,25 +1,26 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, type FormEvent } from "react";
 import { SkillCard } from "../components/ui/SkillCard";
+import { CategoryTree } from "../components/ui/CategoryTree";
 import { skillsApi } from "../lib/api/skills";
 import { statsApi } from "../lib/api/stats";
 import { routerApi } from "../lib/api/router";
-import type { Skill, Stats } from "../types";
+import { useLanguage } from "../stores/LanguageContext";
+import type { Skill, Stats, Category } from "../types";
 
-const categories = [
-  { label: '文档生成', icon: 'description', query: '文档' },
-  { label: '代码编写', icon: 'code', query: '代码' },
-  { label: '数据分析', icon: 'database', query: '数据' },
-  { label: '设计辅助', icon: 'palette', query: '设计' },
-  { label: '自动化流', icon: 'robot_2', query: '自动化' },
-  { label: '翻译', icon: 'translate', query: '翻译' },
-];
+function pickDesc(lang: string, skill: Skill): string {
+  if (lang === 'zh' && skill.zhDescription) return skill.zhDescription;
+  if (lang === 'en' && skill.enDescription) return skill.enDescription;
+  return skill.description;
+}
 
 export function Home() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
   const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword');
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<Stats | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [trendingSkills, setTrendingSkills] = useState<Skill[]>([]);
   const [latestSkills, setLatestSkills] = useState<Skill[]>([]);
   const [semanticResults, setSemanticResults] = useState<{ title: string; reason: string }[]>([]);
@@ -28,6 +29,7 @@ export function Home() {
 
   useEffect(() => {
     statsApi.getOverview().then(setStats).catch(() => {});
+    skillsApi.getCategories().then(setCategories).catch(() => {});
     skillsApi.getTrending().then(setTrendingSkills).catch(() => {});
     skillsApi.getLatest().then(setLatestSkills).catch(() => {});
   }, []);
@@ -67,22 +69,13 @@ export function Home() {
 
   return (
     <div className="flex w-full">
-      <aside className="hidden md:flex flex-col bg-slate-50 w-56 lg:w-64 border-r border-slate-200">
+      <aside className="hidden md:flex flex-col bg-slate-50 w-56 lg:w-64 border-r border-slate-200 overflow-y-auto">
         <div className="px-4 lg:px-6 mb-4 pt-8">
           <h3 className="text-slate-900 font-bold text-sm">探索分类</h3>
           <p className="text-slate-500 text-xs mt-1">按领域浏览</p>
         </div>
-        <nav className="flex flex-col gap-1 w-full text-sm">
-          {categories.map((cat, idx) => (
-            <Link
-              key={cat.label}
-              to={`/search?q=${encodeURIComponent(cat.query)}`}
-              className={`flex items-center gap-3 px-4 lg:px-6 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all ${idx === 2 ? 'bg-brand-50 text-brand-700 border-r-2 border-brand-600' : ''}`}
-            >
-              <span className="material-symbols-outlined text-lg">{cat.icon}</span>
-              {cat.label}
-            </Link>
-          ))}
+        <nav className="flex flex-col w-full text-sm">
+          <CategoryTree categories={categories} linkMode />
         </nav>
       </aside>
 
@@ -237,7 +230,7 @@ export function Home() {
                         </Link>
                         <span className="text-[11px] text-slate-500 shrink-0">{item.createdAt}</span>
                       </div>
-                      <p className="text-xs text-slate-500 line-clamp-1">{item.description}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{pickDesc(language, item)}</p>
                     </div>
                   </div>
                 )) : (
@@ -256,12 +249,12 @@ export function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {categories.map(cat => (
               <Link
-                key={cat.label}
-                to={`/search?q=${encodeURIComponent(cat.query)}`}
+                key={cat.id}
+                to={`/search?category=${cat.slug}`}
                 className="flex flex-col items-center justify-center p-5 md:p-6 bg-white border border-slate-200 rounded-lg hover:border-brand-600 hover:shadow-md group transition-all"
               >
                 <span className="material-symbols-outlined text-[28px] md:text-[32px] text-slate-400 group-hover:text-brand-600 mb-2 md:mb-3 transition-colors">{cat.icon}</span>
-                <span className="text-xs md:text-sm font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{cat.label}</span>
+                <span className="text-xs md:text-sm font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{cat.name}</span>
               </Link>
             ))}
           </div>

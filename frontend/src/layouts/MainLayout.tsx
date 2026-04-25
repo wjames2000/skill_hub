@@ -1,9 +1,11 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../stores/AuthContext";
+import { useLanguage, type Language } from "../stores/LanguageContext";
 
 export function MainLayout() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -44,6 +46,14 @@ export function MainLayout() {
                 <Link to="/admin" className="text-slate-600 font-medium hover:text-brand-600 transition-colors text-sm">管理</Link>
               )}
             </div>
+
+            <button
+              onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
+              className="px-2 py-1 text-xs font-medium rounded border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors"
+              title="切换语言"
+            >
+              {language === 'zh' ? 'EN' : '中'}
+            </button>
 
             <button
               onClick={() => setSearchQuery('')}

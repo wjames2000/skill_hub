@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Skill } from "../../types";
+import { useDescription } from "../../stores/LanguageContext";
 
 interface Props {
   skill: Skill;
@@ -26,6 +27,7 @@ const iconMap: Record<string, string> = {
 
 export function SkillCard({ skill, showMatchScore }: Props) {
   const icon = iconMap[skill.icon] || iconMap.default;
+  const desc = useDescription(skill);
 
   return (
     <Link
@@ -51,7 +53,7 @@ export function SkillCard({ skill, showMatchScore }: Props) {
       </div>
 
       <p className="text-sm text-slate-600 line-clamp-2 mb-4 flex-1">
-        {skill.description}
+        {desc}
       </p>
 
       <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">

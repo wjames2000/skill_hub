@@ -1,9 +1,17 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { skillsApi } from "../lib/api/skills";
+import { useLanguage } from "../stores/LanguageContext";
 import type { Skill } from "../types";
 
+function pickDesc(lang: string, s: { zhDescription: string; enDescription: string; description: string }): string {
+  if (lang === 'zh' && s.zhDescription) return s.zhDescription;
+  if (lang === 'en' && s.enDescription) return s.enDescription;
+  return s.description;
+}
+
 export function IDE() {
+  const { language } = useLanguage();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +88,7 @@ export function IDE() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {skill.description}
+                    {pickDesc(language, skill)}
                   </p>
                 </div>
                 <button className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm" title="安装">

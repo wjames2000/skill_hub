@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hpds/skill-hub/internal/model"
@@ -100,18 +101,19 @@ func (s *SyncService) HandleScanTask(ctx context.Context, payload syncer.ScanTas
 		logger.Int64("skill_id", payload.SkillID),
 		logger.String("repo", payload.FullName))
 
-	result, err := s.orchestrator.Scanner().ScanRepo(ctx, payload.RepoPath)
-	if err != nil {
-		return fmt.Errorf("scan repo: %w", err)
+	parts := strings.SplitN(payload.FullName, "/", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid repo full name: %s", payload.FullName)
 	}
+	owner, repo := parts[0], parts[1]
 
-	if err := s.skillRepo.UpdateScanResult(payload.SkillID, result.Passed, result.Summary); err != nil {
-		return fmt.Errorf("update scan result: %w", err)
+	if err := s.orchestrator.ScanSkill(ctx, payload.SkillID, owner, repo, payload.FullName); err != nil {
+		return fmt.Errorf("scan skill: %w", err)
 	}
 
 	logger.Info("scan completed",
 		logger.Int64("skill_id", payload.SkillID),
-		logger.Bool("passed", result.Passed),
+		logger.String("repo", payload.FullName),
 		logger.Duration("duration", time.Since(start)))
 
 	return nil

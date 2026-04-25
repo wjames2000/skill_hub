@@ -7,6 +7,8 @@ type Skill struct {
 	Name          string    `xorm:"varchar(255) not null 'name'" json:"name"`
 	DisplayName   string    `xorm:"varchar(255) 'display_name'" json:"display_name"`
 	Description   string    `xorm:"text 'description'" json:"description"`
+	ZhDescription string    `xorm:"text 'zh_description'" json:"zh_description"`
+	EnDescription string    `xorm:"text 'en_description'" json:"en_description"`
 	Version       string    `xorm:"varchar(50) 'version'" json:"version"`
 	Author        string    `xorm:"varchar(255) 'author'" json:"author"`
 	Repository    string    `xorm:"varchar(512) not null 'repository'" json:"repository"`
@@ -24,6 +26,7 @@ type Skill struct {
 	Language      string    `xorm:"varchar(100) 'language'" json:"language"`
 	Topics        []string  `xorm:"json 'topics'" json:"topics"`
 	Category      string    `xorm:"varchar(100) 'category'" json:"category"`
+	CategoryID    int64     `xorm:"bigint 'category_id'" json:"category_id"`
 	Tags          []string  `xorm:"json 'tags'" json:"tags"`
 	Readme        string    `xorm:"longtext 'readme'" json:"readme"`
 	Installs      int64     `xorm:"int default 0 'installs'" json:"installs"`

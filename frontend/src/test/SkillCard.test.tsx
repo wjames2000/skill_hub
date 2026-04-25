@@ -2,12 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { SkillCard } from '../components/ui/SkillCard';
+import { LanguageProvider } from '../stores/LanguageContext';
 import type { Skill } from '../types';
 
 const mockSkill: Skill = {
   id: 1,
   title: 'Test Skill',
   description: 'A test skill description',
+  zhDescription: '',
+  enDescription: '',
   author: 'Test Author',
   icon: 'terminal',
   iconColor: 'text-green-600',
@@ -25,7 +28,7 @@ const mockSkill: Skill = {
 };
 
 function renderWithRouter(ui: React.ReactElement) {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
+  return render(<BrowserRouter><LanguageProvider>{ui}</LanguageProvider></BrowserRouter>);
 }
 
 describe('SkillCard', () => {

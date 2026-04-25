@@ -3,11 +3,18 @@ import { useState, useEffect } from "react";
 import { skillsApi } from "../lib/api/skills";
 import { ReviewSection } from "../components/ui/ReviewSection";
 import { StarRating } from "../components/ui/StarRating";
+import { useLanguage } from "../stores/LanguageContext";
 import type { SkillDetail } from "../types";
 
+function pickDesc(lang: string, s: { zhDescription: string; enDescription: string; description: string }): string {
+  if (lang === 'zh' && s.zhDescription) return s.zhDescription;
+  if (lang === 'en' && s.enDescription) return s.enDescription;
+  return s.description;
+}
 
 export function Detail() {
   const { id } = useParams<{ id: string }>();
+  const { language } = useLanguage();
   const [skill, setSkill] = useState<SkillDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'readme' | 'files' | 'details'>('readme');
@@ -111,7 +118,7 @@ export function Detail() {
             </div>
 
             <p className="mt-3 text-sm md:text-base text-slate-600 max-w-2xl leading-relaxed">
-              {skill.description}
+              {pickDesc(language, skill)}
             </p>
           </div>
         </div>
@@ -267,7 +274,7 @@ export function Detail() {
                   </div>
                   <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono shrink-0">{s.version}</span>
                 </div>
-                <p className="text-xs text-slate-600 line-clamp-2">{s.description}</p>
+                <p className="text-xs text-slate-600 line-clamp-2">{pickDesc(language, s)}</p>
                 <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">star</span> {s.rating.toFixed(1)}

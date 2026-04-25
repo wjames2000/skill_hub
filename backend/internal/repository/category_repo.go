@@ -5,6 +5,15 @@ import (
 	"xorm.io/xorm"
 )
 
+type CategoryTreeNode struct {
+	ID       int64               `json:"id"`
+	Name     string              `json:"name"`
+	Slug     string              `json:"slug"`
+	Icon     string              `json:"icon"`
+	Count    int64               `json:"count"`
+	Children []*CategoryTreeNode `json:"children"`
+}
+
 type CategoryRepo struct {
 	db *xorm.Engine
 }
@@ -46,6 +55,38 @@ func (r *CategoryRepo) List() ([]*model.SkillCategory, error) {
 	var cats []*model.SkillCategory
 	err := r.db.Asc("sort_order").Find(&cats)
 	return cats, err
+}
+
+func (r *CategoryRepo) GetTree() ([]*CategoryTreeNode, error) {
+	all, err := r.List()
+	if err != nil {
+		return nil, err
+	}
+
+	byParent := make(map[int64][]*model.SkillCategory)
+	for _, cat := range all {
+		byParent[cat.ParentID] = append(byParent[cat.ParentID], cat)
+	}
+
+	var build func(parentID int64) []*CategoryTreeNode
+	build = func(parentID int64) []*CategoryTreeNode {
+		var nodes []*CategoryTreeNode
+		for _, cat := range byParent[parentID] {
+			count, _ := r.GetSkillCountByCategory(cat.Name)
+			node := &CategoryTreeNode{
+				ID:    cat.ID,
+				Name:  cat.Name,
+				Slug:  cat.Slug,
+				Icon:  cat.Icon,
+				Count: count,
+			}
+			node.Children = build(cat.ID)
+			nodes = append(nodes, node)
+		}
+		return nodes
+	}
+
+	return build(0), nil
 }
 
 func (r *CategoryRepo) Update(cat *model.SkillCategory) error {

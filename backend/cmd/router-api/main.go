@@ -126,6 +126,9 @@ func main() {
 	favoriteRepo := repository.NewFavoriteRepo(dbEngine)
 	reviewRepo := repository.NewReviewRepo(dbEngine)
 	categoryRepo := repository.NewCategoryRepo(dbEngine)
+	if err := categoryRepo.SeedDefaultCategories(); err != nil {
+		logger.Warn("seed categories", logger.String("error", err.Error()))
+	}
 
 	vectorWorker := vectorizer.NewWorker(embedder, milvusClient, skillRepo, embRepo, 3)
 

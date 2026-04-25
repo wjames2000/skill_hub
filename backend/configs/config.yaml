@@ -60,14 +60,14 @@ sync:
   incremental_days: 7
   concurrency: 5
   sync_timeout: 1800
-  scan_enabled: false
+  scan_enabled: true
 
 asynq:
   enabled: true
   concurrency: 10
 
 semgrep:
-  enabled: false
+  enabled: true
   binary: "semgrep"
   rules: "p/default"
   timeout: 300

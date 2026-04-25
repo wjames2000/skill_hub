@@ -3,22 +3,20 @@ import { useState, useEffect } from "react";
 import { skillsApi } from "../lib/api/skills";
 import { routerApi } from "../lib/api/router";
 import { SkillCard } from "../components/ui/SkillCard";
+import { CategoryTree } from "../components/ui/CategoryTree";
 import { Pagination } from "../components/ui/Pagination";
-import type { Skill, SearchFilters, RouterMatchResult } from "../types";
+import { useLanguage } from "../stores/LanguageContext";
+import type { Skill, SearchFilters, RouterMatchResult, Category } from "../types";
 
-const categories = [
-  { value: '', label: '全部' },
-  { value: '数据处理', label: '数据处理' },
-  { value: '可视化', label: '可视化' },
-  { value: '自动化脚本', label: '自动化脚本' },
-  { value: '代码生成', label: '代码生成' },
-  { value: '前端', label: '前端' },
-  { value: 'DevOps', label: 'DevOps' },
-  { value: '数据库', label: '数据库' },
-];
+function pickDesc(lang: string, s: { zhDescription: string; enDescription: string; description: string }): string {
+  if (lang === 'zh' && s.zhDescription) return s.zhDescription;
+  if (lang === 'en' && s.enDescription) return s.enDescription;
+  return s.description;
+}
 
 export function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { language } = useLanguage();
   const query = searchParams.get('q') || '';
   const mode = searchParams.get('mode') || 'keyword';
 
@@ -27,11 +25,17 @@ export function Search() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState('');
+  const [tags, setTags] = useState('');
   const [safeOnly, setSafeOnly] = useState(true);
   const [sort, setSort] = useState<'relevance' | 'rating' | 'downloads'>('relevance');
   const [semanticResults, setSemanticResults] = useState<RouterMatchResult[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const pageSize = 10;
+
+  useEffect(() => {
+    skillsApi.getCategories().then(setCategories).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -63,6 +67,9 @@ export function Search() {
       if (category) filters.category = category;
       if (safeOnly) filters.safe = true;
       if (sort) filters.sort = sort;
+      if (tags.trim()) {
+        filters.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
 
       skillsApi.search(filters)
         .then(res => {
@@ -72,7 +79,7 @@ export function Search() {
         .catch(() => {})
         .finally(() => setLoading(false));
     }
-  }, [query, page, category, safeOnly, sort, mode]);
+  }, [query, page, category, tags, safeOnly, sort, mode]);
 
   const handleFilterChange = (key: string, value: string | boolean) => {
     setPage(1);
@@ -87,27 +94,41 @@ export function Search() {
         <div className="card p-4 flex flex-col gap-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <h2 className="font-semibold text-slate-900">筛选</h2>
-            <button onClick={() => { setCategory(''); setSafeOnly(true); setSort('relevance'); }} className="text-brand-600 text-sm hover:text-brand-700 transition-colors">
+            <button onClick={() => { setCategory(''); setTags(''); setSafeOnly(true); setSort('relevance'); }} className="text-brand-600 text-sm hover:text-brand-700 transition-colors">
               重置
             </button>
           </div>
 
           <div className="flex flex-col gap-3">
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">分类</h3>
-            <div className="flex flex-col gap-1.5 text-sm">
-              {categories.map(cat => (
-                <label key={cat.value} className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="category"
-                    checked={category === cat.value}
-                    onChange={() => handleFilterChange('category', cat.value)}
-                    className="w-4 h-4 border-slate-300 text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className="text-slate-700 group-hover:text-brand-600">{cat.label}</span>
-                </label>
-              ))}
+            <div className="flex flex-col text-sm">
+              <label className="flex items-center gap-2 cursor-pointer group px-3 py-2 hover:bg-slate-50 rounded">
+                <input
+                  type="radio"
+                  name="category"
+                  checked={category === ''}
+                  onChange={() => handleFilterChange('category', '')}
+                  className="w-4 h-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span className="text-slate-700 group-hover:text-brand-600">全部</span>
+              </label>
+              <CategoryTree
+                categories={categories}
+                selected={category}
+                onSelect={(cat) => handleFilterChange('category', cat.slug)}
+              />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">标签</h3>
+            <input
+              type="text"
+              value={tags}
+              onChange={e => { setTags(e.target.value); setPage(1); }}
+              placeholder="用逗号分隔多个标签"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:border-brand-600 focus:ring-2 focus:ring-brand-50 outline-none"
+            />
           </div>
 
           <div className="flex flex-col gap-3">
@@ -165,6 +186,14 @@ export function Search() {
                 <span className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs px-2.5 py-1 rounded-full border border-slate-200">
                   分类: {category}
                   <button onClick={() => handleFilterChange('category', '')}>
+                    <span className="material-symbols-outlined text-[14px] cursor-pointer hover:text-red-500">close</span>
+                  </button>
+                </span>
+              )}
+              {tags.trim() && (
+                <span className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs px-2.5 py-1 rounded-full border border-slate-200">
+                  标签: {tags}
+                  <button onClick={() => setTags('')}>
                     <span className="material-symbols-outlined text-[14px] cursor-pointer hover:text-red-500">close</span>
                   </button>
                 </span>
@@ -252,7 +281,7 @@ export function Search() {
                         {skill.safe ? '已扫描安全' : '存在潜在风险'}
                       </div>
                     </div>
-                    <p className="text-sm text-slate-600 line-clamp-2 mt-2 leading-relaxed">{skill.description}</p>
+                    <p className="text-sm text-slate-600 line-clamp-2 mt-2 leading-relaxed">{pickDesc(language, skill)}</p>
                   </div>
                   <div className="flex md:flex-col items-center justify-between gap-3 md:border-l border-slate-100 md:pl-4 md:min-w-[140px]">
                     {skill.matchScore != null && (

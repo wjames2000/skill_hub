@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { MainLayout } from "./layouts/MainLayout";
 import { AuthProvider } from "./stores/AuthContext";
+import { LanguageProvider } from "./stores/LanguageContext";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { ProtectedRoute } from "./components/ui/ProtectedRoute";
 
@@ -17,6 +18,7 @@ const IDE = lazy(() => import("./pages/IDE").then(m => ({ default: m.IDE })));
 export default function App() {
   return (
     <BrowserRouter>
+      <LanguageProvider>
       <AuthProvider>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
@@ -33,6 +35,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }
