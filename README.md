@@ -28,7 +28,7 @@
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"/>
 </p>
 
-English | [中文](https://github.com/wjames2000/skill_hub/blob/main/README_cn.md)
+English | [中文](https://github.com/wjames2000/skill_hub/blob/main/README_CN.md)
 
 ---
 
