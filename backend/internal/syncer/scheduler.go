@@ -106,12 +106,16 @@ func (l *cronLogger) Error(err error, msg string, keysAndValues ...interface{}) 
 }
 
 func CreateSyncTask(ctx context.Context, syncTaskRepo *repository.SyncTaskRepo, queue *TaskQueue, syncType, strategy string) (*model.SyncTask, error) {
-	running, err := syncTaskRepo.GetRunningTask()
-	if err != nil {
-		return nil, fmt.Errorf("check running: %w", err)
-	}
-	if running != nil {
-		return nil, fmt.Errorf("a sync task is already running (id=%d)", running.ID)
+	if queue == nil {
+		_ = syncTaskRepo.CancelRunning()
+	} else {
+		running, err := syncTaskRepo.GetRunningTask()
+		if err != nil {
+			return nil, fmt.Errorf("check running: %w", err)
+		}
+		if running != nil {
+			return nil, fmt.Errorf("a sync task is already running (id=%d)", running.ID)
+		}
 	}
 
 	task := &model.SyncTask{
@@ -124,13 +128,16 @@ func CreateSyncTask(ctx context.Context, syncTaskRepo *repository.SyncTaskRepo, 
 		return nil, fmt.Errorf("create task: %w", err)
 	}
 
-	if syncType == "full" {
-		err = queue.EnqueueFullSync(task.ID, strategy)
-	} else {
-		err = queue.EnqueueIncrementalSync(task.ID)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("enqueue: %w", err)
+	if queue != nil {
+		var err error
+		if syncType == "full" {
+			err = queue.EnqueueFullSync(task.ID, strategy)
+		} else {
+			err = queue.EnqueueIncrementalSync(task.ID)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("enqueue: %w", err)
+		}
 	}
 
 	return task, nil

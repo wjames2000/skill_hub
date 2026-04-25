@@ -192,6 +192,14 @@ func (s *RouterService) Execute(ctx context.Context, req *ExecuteRequest) (*Exec
 	}, nil
 }
 
+func (s *RouterService) ListLogs(ctx context.Context) ([]*model.RouterLog, error) {
+	logs, _, err := s.logRepo.List(1, 100)
+	if err != nil {
+		return nil, fmt.Errorf("list logs: %w", err)
+	}
+	return logs, nil
+}
+
 func (s *RouterService) SubmitFeedback(ctx context.Context, req *FeedbackRequest) error {
 	if req.Score < 1 || req.Score > 5 {
 		return fmt.Errorf("score must be between 1 and 5")

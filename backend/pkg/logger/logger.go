@@ -3,6 +3,7 @@ package logger
 import (
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -10,6 +11,121 @@ import (
 )
 
 var L *zap.Logger
+
+// LogEntry represents a single log entry returned by GetRecentLogs.
+type LogEntry struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+}
+
+// ringBuffer is a thread-safe fixed-size ring buffer for LogEntry.
+type ringBuffer struct {
+	mu     sync.Mutex
+	buf    []LogEntry
+	size   int
+	cursor int
+	full   bool
+}
+
+func newRingBuffer(size int) *ringBuffer {
+	return &ringBuffer{
+		buf:  make([]LogEntry, size),
+		size: size,
+	}
+}
+
+func (rb *ringBuffer) Push(entry LogEntry) {
+	rb.mu.Lock()
+	rb.buf[rb.cursor] = entry
+	rb.cursor++
+	if rb.cursor >= rb.size {
+		rb.cursor = 0
+		rb.full = true
+	}
+	rb.mu.Unlock()
+}
+
+// Recent returns the n most recent entries, in chronological order.
+func (rb *ringBuffer) Recent(n int) []LogEntry {
+	rb.mu.Lock()
+	defer rb.mu.Unlock()
+
+	if n <= 0 {
+		return []LogEntry{}
+	}
+	if n > rb.size {
+		n = rb.size
+	}
+
+	var total int
+	if rb.full {
+		total = rb.size
+	} else {
+		total = rb.cursor
+	}
+	if n > total {
+		n = total
+	}
+	if n == 0 {
+		return []LogEntry{}
+	}
+
+	result := make([]LogEntry, n)
+	if rb.full {
+		start := (rb.cursor - n + rb.size) % rb.size
+		for i := 0; i < n; i++ {
+			result[i] = rb.buf[(start+i)%rb.size]
+		}
+	} else {
+		copy(result, rb.buf[rb.cursor-n:rb.cursor])
+	}
+	return result
+}
+
+var logBuf = newRingBuffer(1000)
+
+// GetRecentLogs returns the n most recent log entries, in chronological order.
+func GetRecentLogs(n int) []LogEntry {
+	return logBuf.Recent(n)
+}
+
+// ringBufferCore is a zapcore.Core that captures log entries into the ring buffer
+// while delegating actual output to the wrapped core.
+type ringBufferCore struct {
+	zapcore.Core
+	rb *ringBuffer
+}
+
+func (c *ringBufferCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
+	c.rb.Push(LogEntry{
+		Timestamp: entry.Time.Format(time.RFC3339Nano),
+		Level:     entry.Level.String(),
+		Message:   entry.Message,
+	})
+	return c.Core.Write(entry, fields)
+}
+
+func (c *ringBufferCore) Check(entry zapcore.Entry, checkedEntry *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if c.Enabled(entry.Level) {
+		return checkedEntry.AddCore(entry, c)
+	}
+	return checkedEntry
+}
+
+func (c *ringBufferCore) With(fields []zapcore.Field) zapcore.Core {
+	return &ringBufferCore{
+		Core: c.Core.With(fields),
+		rb:   c.rb,
+	}
+}
+
+func newRingBufferCore(primary zapcore.Core) zapcore.Core {
+	return &ringBufferCore{
+		Core: primary,
+		rb:   logBuf,
+	}
+}
 
 func Init(env string) {
 	var cfg zap.Config
@@ -28,6 +144,10 @@ func Init(env string) {
 	if err != nil {
 		panic("logger init: " + err.Error())
 	}
+	// Wrap with ring buffer capture.
+	L = L.WithOptions(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+		return newRingBufferCore(core)
+	}))
 }
 
 func NewGinWriter() io.Writer {
@@ -65,12 +185,12 @@ func init() {
 	if env == "" {
 		env = "development"
 	}
-	core := zapcore.NewCore(
+	primary := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
 		zapcore.AddSync(os.Stdout),
 		zap.NewAtomicLevelAt(zap.DebugLevel),
 	)
-	L = zap.New(core, zap.AddCallerSkip(1))
+	L = zap.New(newRingBufferCore(primary), zap.AddCallerSkip(1))
 	if env != "production" {
 		L = L.WithOptions(zap.Development())
 	}

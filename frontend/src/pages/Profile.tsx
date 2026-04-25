@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../stores/AuthContext";
 import { authApi } from "../lib/api/auth";
+import { ErrorBanner } from "../components/ui/ErrorBanner";
 import type { ApiKey } from "../types";
 
 type Tab = 'profile' | 'api-keys' | 'favorites' | 'history';
@@ -14,10 +15,11 @@ export function Profile() {
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState(user?.bio || "");
   const [saving, setSaving] = useState(false);
+  const [topError, setTopError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab === 'api-keys') {
-      authApi.getApiKeys().then(setApiKeys).catch(() => {});
+      authApi.getApiKeys().then(setApiKeys).catch(() => setTopError('加载 API Key 失败'));
     }
   }, [activeTab]);
 
@@ -27,7 +29,7 @@ export function Profile() {
       const updated = await authApi.updateProfile({ bio } as never);
       updateUser(updated);
       setEditing(false);
-    } catch { /* ignore */ }
+    } catch { setTopError('保存个人资料失败'); }
     setSaving(false);
   };
 
@@ -38,14 +40,14 @@ export function Profile() {
       setNewKeyValue(key.key);
       setNewKeyName("");
       authApi.getApiKeys().then(setApiKeys);
-    } catch { /* ignore */ }
+    } catch { setTopError('创建 API Key 失败'); }
   };
 
   const handleRevokeKey = async (id: number) => {
     try {
       await authApi.revokeApiKey(id);
       setApiKeys(prev => prev.filter(k => k.id !== id));
-    } catch { /* ignore */ }
+    } catch { setTopError('吊销 API Key 失败'); }
   };
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
@@ -93,6 +95,7 @@ export function Profile() {
         </nav>
 
         <div className="flex-1 min-w-0">
+          <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
           {activeTab === 'profile' && (
             <div className="card p-6">
               <div className="flex items-center justify-between mb-6">
@@ -121,9 +124,10 @@ export function Profile() {
                   <p className="font-medium text-slate-900">{user?.email}</p>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-sm text-slate-500 block mb-1">个人简介</label>
+                  <label htmlFor="profile-bio" className="text-sm text-slate-500 block mb-1">个人简介</label>
                   {editing ? (
                     <textarea
+                      id="profile-bio"
                       value={bio}
                       onChange={e => setBio(e.target.value)}
                       className="input-field h-24 resize-none"
@@ -155,7 +159,9 @@ export function Profile() {
               <h2 className="text-lg font-bold text-slate-900 mb-6">API Key 管理</h2>
 
               <div className="flex items-center gap-3 mb-6">
+                <label htmlFor="api-key-name" className="sr-only">API Key 名称</label>
                 <input
+                  id="api-key-name"
                   type="text"
                   value={newKeyName}
                   onChange={e => setNewKeyName(e.target.value)}

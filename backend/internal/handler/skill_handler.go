@@ -9,9 +9,20 @@ import (
 	"github.com/hpds/skill-hub/internal/model"
 	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/pkg/errno"
+	"github.com/hpds/skill-hub/pkg/logger"
 	mls "github.com/hpds/skill-hub/pkg/meilisearch"
 	"github.com/hpds/skill-hub/pkg/response"
 )
+
+type searchRequest struct {
+	Query    string   `json:"query" binding:"required"`
+	Page     int      `json:"page"`
+	PageSize int      `json:"page_size"`
+	Category string   `json:"category"`
+	Tags     []string `json:"tags"`
+	Safe     bool     `json:"safe"`
+	Sort     string   `json:"sort"`
+}
 
 type SkillHandler struct {
 	skillRepo    *repository.SkillRepo
@@ -88,14 +99,60 @@ func (h *SkillHandler) ListSkills(c *gin.Context) {
 	})
 }
 
+func (h *SkillHandler) listSkillsInternal(pageSize int, sort string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pageStr := c.DefaultQuery("page", "1")
+		page, _ := strconv.Atoi(pageStr)
+		if page < 1 {
+			page = 1
+		}
+
+		sess := h.skillRepo.ListQuery().Where("status = ?", model.SkillStatusActive)
+
+		category := c.Query("category")
+		if category != "" {
+			sess = sess.Where("category = ?", category)
+		}
+
+		if c.Query("safe") == "true" {
+			sess = sess.Where("scan_passed = ?", true)
+		}
+
+		switch sort {
+		case "installs":
+			sess = sess.Desc("installs")
+		case "created_at":
+			sess = sess.Desc("created_at")
+		case "score":
+			sess = sess.Desc("score")
+		case "name":
+			sess = sess.Asc("name")
+		default:
+			sess = sess.Desc("stars")
+		}
+
+		var skills []*model.Skill
+		total, err := sess.Limit(pageSize, (page-1)*pageSize).FindAndCount(&skills)
+		if err != nil {
+			response.Error(c, errno.DBError)
+			return
+		}
+
+		response.Success(c, gin.H{
+			"skills": skills,
+			"total":  total,
+			"page":   page,
+			"size":   pageSize,
+		})
+	}
+}
+
 func (h *SkillHandler) ListTrendingSkills(c *gin.Context) {
-	c.Request.URL.RawQuery = "sort=installs&page_size=6"
-	h.ListSkills(c)
+	h.listSkillsInternal(6, "installs")(c)
 }
 
 func (h *SkillHandler) ListLatestSkills(c *gin.Context) {
-	c.Request.URL.RawQuery = "sort=created_at&page_size=10"
-	h.ListSkills(c)
+	h.listSkillsInternal(10, "created_at")(c)
 }
 
 func (h *SkillHandler) ListCategories(c *gin.Context) {
@@ -111,7 +168,7 @@ func (h *SkillHandler) ListCategories(c *gin.Context) {
 func (h *SkillHandler) GetSkill(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
+	if err != nil || id <= 0 {
 		response.Error(c, errno.ParamError)
 		return
 	}
@@ -129,16 +186,52 @@ func (h *SkillHandler) GetSkill(c *gin.Context) {
 	response.Success(c, skill)
 }
 
-func (h *SkillHandler) SearchSkills(c *gin.Context) {
-	var req struct {
-		Query    string   `json:"query" binding:"required"`
-		Page     int      `json:"page"`
-		PageSize int      `json:"page_size"`
-		Category string   `json:"category"`
-		Tags     []string `json:"tags"`
-		Safe     bool     `json:"safe"`
-		Sort     string   `json:"sort"`
+func (h *SkillHandler) searchByDB(c *gin.Context, req *searchRequest) {
+	sess := h.skillRepo.ListQuery().Where("status = ?", model.SkillStatusActive)
+
+	if req.Query != "" {
+		sess = sess.Where("(name LIKE ? OR display_name LIKE ?)", "%"+req.Query+"%", "%"+req.Query+"%")
 	}
+	if req.Category != "" {
+		sess = sess.Where("category = ?", req.Category)
+	}
+	for _, tag := range req.Tags {
+		jsonTag, _ := json.Marshal(tag)
+		sess = sess.Where("JSON_CONTAINS(topics, ?) OR JSON_CONTAINS(tags, ?)", string(jsonTag), string(jsonTag))
+	}
+	if req.Safe {
+		sess = sess.Where("scan_passed = ?", true)
+	}
+
+	switch req.Sort {
+	case "installs":
+		sess = sess.Desc("installs")
+	case "created_at":
+		sess = sess.Desc("created_at")
+	case "score":
+		sess = sess.Desc("score")
+	case "name":
+		sess = sess.Asc("name")
+	default:
+		sess = sess.Desc("stars")
+	}
+
+	var skills []*model.Skill
+	total, err := sess.Limit(req.PageSize, (req.Page-1)*req.PageSize).FindAndCount(&skills)
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	response.Success(c, gin.H{
+		"skills": skills,
+		"total":  total,
+		"page":   req.Page,
+		"size":   req.PageSize,
+	})
+}
+
+func (h *SkillHandler) SearchSkills(c *gin.Context) {
+	var req searchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, errno.ParamError)
 		return
@@ -151,46 +244,7 @@ func (h *SkillHandler) SearchSkills(c *gin.Context) {
 	}
 
 	if h.meiliCli == nil {
-		sess := h.skillRepo.ListQuery().Where("status = ?", model.SkillStatusActive)
-
-		if req.Query != "" {
-			sess = sess.Where("(name LIKE ? OR display_name LIKE ?)", "%"+req.Query+"%", "%"+req.Query+"%")
-		}
-		if req.Category != "" {
-			sess = sess.Where("category = ?", req.Category)
-		}
-		for _, tag := range req.Tags {
-			sess = sess.Where("JSON_CONTAINS(topics, ?) OR JSON_CONTAINS(tags, ?)", `"`+tag+`"`, `"`+tag+`"`)
-		}
-		if req.Safe {
-			sess = sess.Where("scan_passed = ?", true)
-		}
-
-		switch req.Sort {
-		case "installs":
-			sess = sess.Desc("installs")
-		case "created_at":
-			sess = sess.Desc("created_at")
-		case "score":
-			sess = sess.Desc("score")
-		case "name":
-			sess = sess.Asc("name")
-		default:
-			sess = sess.Desc("stars")
-		}
-
-		var skills []*model.Skill
-		total, err := sess.Limit(req.PageSize, (req.Page-1)*req.PageSize).FindAndCount(&skills)
-		if err != nil {
-			response.Error(c, errno.DBError)
-			return
-		}
-		response.Success(c, gin.H{
-			"skills": skills,
-			"total":  total,
-			"page":   req.Page,
-			"size":   req.PageSize,
-		})
+		h.searchByDB(c, &req)
 		return
 	}
 
@@ -200,7 +254,9 @@ func (h *SkillHandler) SearchSkills(c *gin.Context) {
 	}
 	resp, err := h.meiliCli.Search("skills", req.Query, int64(req.PageSize), filter)
 	if err != nil {
-		response.Error(c, errno.InternalError)
+		// Fall back to DB search when Meilisearch fails
+		logger.Warn("meilisearch search failed, falling back to DB", logger.String("error", err.Error()))
+		h.searchByDB(c, &req)
 		return
 	}
 

@@ -61,6 +61,8 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
+		ZhName      string `json:"zh_name"`
+		EnName      string `json:"en_name"`
 		Slug        string `json:"slug" binding:"required"`
 		Description string `json:"description"`
 		Icon        string `json:"icon"`
@@ -82,6 +84,8 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 
 	cat := &model.SkillCategory{
 		Name:        req.Name,
+		ZhName:      req.ZhName,
+		EnName:      req.EnName,
 		Slug:        req.Slug,
 		Description: req.Description,
 		Icon:        req.Icon,
@@ -117,6 +121,8 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 
 	var req struct {
 		Name        string `json:"name"`
+		ZhName      string `json:"zh_name"`
+		EnName      string `json:"en_name"`
 		Slug        string `json:"slug"`
 		Description string `json:"description"`
 		Icon        string `json:"icon"`
@@ -130,6 +136,12 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 
 	if req.Name != "" {
 		cat.Name = req.Name
+	}
+	if req.ZhName != "" {
+		cat.ZhName = req.ZhName
+	}
+	if req.EnName != "" {
+		cat.EnName = req.EnName
 	}
 	if req.Slug != "" {
 		req.Slug = strings.ToLower(req.Slug)

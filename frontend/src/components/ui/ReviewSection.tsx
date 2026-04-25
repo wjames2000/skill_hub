@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StarRating } from "./StarRating";
 import { useAuth } from "../../stores/AuthContext";
+import { useLanguage } from "../../stores/LanguageContext";
 import { Link } from "react-router-dom";
 import { skillsApi } from "../../lib/api/skills";
 import type { Review } from "../../types";
@@ -12,6 +13,7 @@ interface Props {
 
 export function ReviewSection({ reviews, skillId }: Props) {
   const { isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -26,7 +28,7 @@ export function ReviewSection({ reviews, skillId }: Props) {
       setRating(0);
       setComment("");
     } catch {
-      alert('提交评论失败，请稍后重试');
+      alert(t('提交评论失败，请稍后重试', 'Failed to submit review, please try again later'));
     } finally {
       setSubmitting(false);
     }
@@ -36,22 +38,22 @@ export function ReviewSection({ reviews, skillId }: Props) {
     <div className="flex flex-col gap-6">
       <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
         <span className="material-symbols-outlined text-brand-600">rate_review</span>
-        评分与评论 ({localReviews.length})
+        {t('评分与评论', 'Reviews')} ({localReviews.length})
       </h3>
 
       {isAuthenticated ? (
         <div className="card p-5">
-          <h4 className="font-medium text-slate-900 mb-3">撰写评论</h4>
+          <h4 className="font-medium text-slate-900 mb-3">{t('撰写评论', 'Write a Review')}</h4>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">评分:</span>
+              <span className="text-sm text-slate-600">{t('评分:', 'Rating:')}</span>
               <StarRating rating={rating} size="md" interactive onChange={setRating} />
             </div>
             <textarea
               value={comment}
               onChange={e => setComment(e.target.value)}
               className="input-field h-24 resize-none"
-              placeholder="分享您的使用体验..."
+              placeholder={t('分享您的使用体验...', 'Share your experience...')}
             />
             <div className="flex justify-end">
               <button
@@ -59,7 +61,7 @@ export function ReviewSection({ reviews, skillId }: Props) {
                 disabled={!rating || !comment.trim() || submitting}
                 className="btn-primary text-sm"
               >
-                {submitting ? '提交中...' : '提交评论'}
+                {submitting ? t('提交中...', 'Submitting...') : t('提交评论', 'Submit Review')}
               </button>
             </div>
           </div>
@@ -67,14 +69,14 @@ export function ReviewSection({ reviews, skillId }: Props) {
       ) : (
         <div className="card p-5 text-center">
           <p className="text-sm text-slate-500">
-            <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">登录</Link> 后即可发表评论
+            <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">{t('登录', 'Login')}</Link> {t('后即可发表评论', 'to leave a review')}
           </p>
         </div>
       )}
 
       <div className="flex flex-col gap-4">
         {localReviews.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-8">暂无评论，成为第一个评价的人吧</p>
+          <p className="text-sm text-slate-500 text-center py-8">{t('暂无评论，成为第一个评价的人吧', 'No reviews yet. Be the first to share your thoughts!')}</p>
         ) : (
           localReviews.map(review => (
             <div key={review.id} className="card p-4">

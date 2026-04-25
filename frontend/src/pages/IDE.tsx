@@ -26,7 +26,7 @@ export function IDE() {
       {/* Extension Sidebar */}
       <nav className="bg-slate-50 h-screen w-64 border-r border-slate-200 flex flex-col overflow-y-auto shrink-0 z-10">
         <div className="px-4 py-4 border-b border-slate-200">
-          <Link to="/" className="text-lg font-black text-slate-900 uppercase tracking-wider block">SkillHub Pro</Link>
+          <h1 className="text-lg font-black text-slate-900 uppercase tracking-wider block"><Link to="/">SkillHub Pro</Link></h1>
           <p className="text-xs font-medium text-slate-500 mt-1">IDE Extension</p>
         </div>
         <div className="flex-1 py-2 flex flex-col gap-1">
@@ -48,7 +48,7 @@ export function IDE() {
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
             <input 
               type="text" 
-              className="w-full pl-10 pr-3 py-2 bg-slate-50 text-slate-900 border border-slate-200 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm placeholder:text-slate-400 transition-colors" 
+               className="w-full pl-10 pr-3 py-2 bg-slate-50 text-slate-900 border border-slate-200 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm placeholder:text-slate-500 transition-colors" 
               placeholder="搜索技能..." 
             />
           </div>

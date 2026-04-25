@@ -63,6 +63,8 @@ func (s *SkillVersion) TableName() string {
 type SkillCategory struct {
 	ID          int64     `xorm:"pk autoincr 'id'" json:"id"`
 	Name        string    `xorm:"varchar(100) not null 'name'" json:"name"`
+	ZhName      string    `xorm:"varchar(100) 'zh_name'" json:"zh_name"`
+	EnName      string    `xorm:"varchar(100) 'en_name'" json:"en_name"`
 	Slug        string    `xorm:"varchar(100) not null unique 'slug'" json:"slug"`
 	Description string    `xorm:"text 'description'" json:"description"`
 	Icon        string    `xorm:"varchar(255) 'icon'" json:"icon"`

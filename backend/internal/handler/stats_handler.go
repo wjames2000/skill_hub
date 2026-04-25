@@ -42,11 +42,13 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 	for _, cat := range categories {
 		count, _ := h.categoryRepo.GetSkillCountByCategory(cat.Name)
 		categoryStats = append(categoryStats, gin.H{
-			"id":    cat.ID,
-			"name":  cat.Name,
-			"slug":  cat.Slug,
-			"icon":  cat.Icon,
-			"count": count,
+			"id":      cat.ID,
+			"name":    cat.Name,
+			"zh_name": cat.ZhName,
+			"en_name": cat.EnName,
+			"slug":    cat.Slug,
+			"icon":    cat.Icon,
+			"count":   count,
 		})
 	}
 
@@ -74,7 +76,10 @@ func (h *StatsHandler) TopSkills(c *gin.Context) {
 		sess = sess.Desc("installs")
 	case "score":
 		sess = sess.Desc("score")
+	case "stars":
+		sess = sess.Desc("stars")
 	default:
+		sort = "stars"
 		sess = sess.Desc("stars")
 	}
 

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, type FormEvent } from "react";
 import { SkillCard } from "../components/ui/SkillCard";
 import { CategoryTree } from "../components/ui/CategoryTree";
+import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { skillsApi } from "../lib/api/skills";
 import { statsApi } from "../lib/api/stats";
 import { useLanguage } from "../stores/LanguageContext";
@@ -15,16 +16,17 @@ function pickDesc(lang: string, skill: Skill): string {
 
 export function Home() {
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword');
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<Stats | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [trendingSkills, setTrendingSkills] = useState<Skill[]>([]);
   const [latestSkills, setLatestSkills] = useState<Skill[]>([]);
+  const [topError, setTopError] = useState<string | null>(null);
 
   useEffect(() => {
-    statsApi.getOverview().then(setStats).catch(() => {});
+    statsApi.getOverview().then(setStats).catch(() => setTopError('加载数据失败'));
     skillsApi.getCategories().then(setCategories).catch(() => {});
     skillsApi.getTrending().then(setTrendingSkills).catch(() => {});
     skillsApi.getLatest().then(setLatestSkills).catch(() => {});
@@ -41,25 +43,26 @@ export function Home() {
   };
 
   const semanticCards = [
-    { label: '可用技能总量', value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: '月活跃开发者', value: stats ? (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k+' : '-', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: '累计 API 调用', value: stats ? (stats.totalApiCalls / 1e9).toFixed(1) + 'B' : '-', changeText: '历史总计', icon: 'api', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: 'VS Code 插件安装', value: stats ? (stats.pluginInstalls / 1000).toFixed(0) + 'k+' : '-', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('可用技能总量', 'Total Skills'), value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('月活跃开发者', 'Monthly Active Devs'), value: stats ? (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k+' : '-', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('累计 API 调用', 'Total API Calls'), value: stats ? (stats.totalApiCalls / 1e9).toFixed(1) + 'B' : '-', changeText: t('历史总计', 'All Time'), icon: 'api', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('VS Code 插件安装', 'VS Code Plugin Installs'), value: stats ? (stats.pluginInstalls / 1000).toFixed(0) + 'k+' : '-', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
   ];
 
   return (
     <div className="flex w-full">
       <aside className="hidden md:flex flex-col bg-slate-50 w-56 lg:w-64 border-r border-slate-200 overflow-y-auto">
         <div className="px-4 lg:px-6 mb-4 pt-8">
-          <h3 className="text-slate-900 font-bold text-sm">探索分类</h3>
-          <p className="text-slate-500 text-xs mt-1">按领域浏览</p>
+          <h3 className="text-slate-900 font-bold text-sm">{t('探索分类', 'Explore Categories')}</h3>
+          <p className="text-slate-500 text-xs mt-1">{t('按领域浏览', 'Browse by domain')}</p>
         </div>
         <nav className="flex flex-col w-full text-sm">
-          <CategoryTree categories={categories} linkMode />
+          <CategoryTree categories={categories} linkMode language={language} />
         </nav>
       </aside>
 
       <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-10 max-w-[1280px] mx-auto w-full">
+        <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
         <section className="flex flex-col items-center justify-center text-center py-12 lg:py-16 px-4 md:px-8 bg-white rounded-xl border border-slate-200 shadow-card relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-brand-50/50 to-white pointer-events-none" />
           <div className="relative z-10 max-w-3xl flex flex-col items-center gap-5">
@@ -68,33 +71,35 @@ export function Home() {
               v2.4 发布: 支持本地模型接入
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
-              让 AI 能力的获取像安装 IDE 插件一样简单
+              {t('让 AI 能力的获取像安装 IDE 插件一样简单', 'Get AI capabilities as easily as installing IDE plugins')}
             </h1>
             <p className="text-sm md:text-base text-slate-500 max-w-2xl">
-              探索、测试并一键集成数以千计的专业 AI 技能。专为开发者打造的高效智能体生态系统。
+              {t('探索、测试并一键集成数以千计的专业 AI 技能。专为开发者打造的高效智能体生态系统。', 'Explore, test, and integrate thousands of professional AI skills with one click. An efficient agent ecosystem built for developers.')}
             </p>
 
             <div className="w-full max-w-xl mt-2">
               <div className="flex items-center gap-1 mb-3">
                 <button
                   onClick={() => setSearchMode('keyword')}
+                  aria-pressed={searchMode === 'keyword'}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                     searchMode === 'keyword'
                       ? 'bg-brand-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  关键词搜索
+                  {t('关键词搜索', 'Keyword Search')}
                 </button>
                 <button
                   onClick={() => setSearchMode('semantic')}
+                  aria-pressed={searchMode === 'semantic'}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                     searchMode === 'semantic'
                       ? 'bg-brand-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  智能语义搜索
+                  {t('智能语义搜索', 'Semantic Search')}
                 </button>
               </div>
 
@@ -106,15 +111,15 @@ export function Home() {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full py-3.5 md:py-4 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none"
-                  placeholder={searchMode === 'semantic' ? "用自然语言描述您需要的技能..." : "搜索技能，如 'Python 代码重构'"}
+                  className="w-full py-3.5 md:py-4 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none placeholder:text-slate-500"
+                  placeholder={searchMode === 'semantic' ? t("用自然语言描述您需要的技能...", "Describe the skill you need in natural language...") : t("搜索技能，如 'Python 代码重构'", "Search skills, e.g. 'Python code refactoring'")}
                 />
                 <button
                   type="submit"
                   disabled={!searchQuery.trim()}
                   className="absolute right-2 px-4 py-1.5 md:py-2 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
                 >
-                  {searchMode === 'semantic' ? '智能匹配' : '搜索'}
+                  {searchMode === 'semantic' ? t('智能匹配', 'Smart Match') : t('搜索', 'Search')}
                 </button>
               </form>
             </div>
@@ -149,27 +154,27 @@ export function Home() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-500 fill">local_fire_department</span>
-                热门技能榜
+                {t('热门技能榜', 'Trending Skills')}
               </h2>
               <Link to="/search?sort=downloads" className="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center">
-                查看全部
+                {t('查看全部', 'View All')}
                 <span className="material-symbols-outlined text-[16px]">chevron_right</span>
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {trendingSkills.length > 0 ? trendingSkills.map(skill => (
                 <SkillCard key={skill.id} skill={skill} />
-              )) : (
-                <div className="col-span-full text-center text-sm text-slate-500 py-8">暂无热门技能</div>
-              )}
-            </div>
+                )) : (
+                  <div className="col-span-full text-center text-sm text-slate-500 py-8">{t('暂无热门技能', 'No trending skills available')}</div>
+                )}
+              </div>
           </section>
 
           <section className="flex flex-col gap-5">
-            <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
-              <span className="material-symbols-outlined text-green-500">update</span>
-              最新收录
-            </h2>
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-500">update</span>
+                {t('最新收录', 'Latest Additions')}
+              </h2>
             <div className="card p-5">
               <div className="relative border-l-2 border-slate-100 ml-3 flex flex-col gap-5 py-2">
                 {latestSkills.length > 0 ? latestSkills.map((item, idx) => (
@@ -185,30 +190,33 @@ export function Home() {
                       <p className="text-xs text-slate-500 line-clamp-1">{pickDesc(language, item)}</p>
                     </div>
                   </div>
-                )) : (
-                  <div className="text-center text-sm text-slate-500 py-8">暂无最新技能</div>
-                )}
-              </div>
-              <Link to="/search?sort=newest" className="block text-center w-full mt-4 py-2 text-brand-600 text-sm font-medium bg-brand-50 hover:bg-brand-100 rounded transition-colors">
-                查看动态流
-              </Link>
+                  )) : (
+                    <div className="text-center text-sm text-slate-500 py-8">{t('暂无最新技能', 'No new skills available')}</div>
+                  )}
+                </div>
+                <Link to="/search?sort=newest" className="block text-center w-full mt-4 py-2 text-brand-600 text-sm font-medium bg-brand-50 hover:bg-brand-100 rounded transition-colors">
+                  {t('查看动态流', 'View Activity Feed')}
+                </Link>
             </div>
           </section>
         </div>
 
         <section className="flex flex-col gap-5 pt-8 border-t border-slate-200">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">按领域探索</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">{t('按领域探索', 'Explore by Domain')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map(cat => (
+            {categories.map(cat => {
+            const catName = language === 'en' && cat.enName ? cat.enName : (language === 'zh' && cat.zhName ? cat.zhName : cat.name);
+            return (
               <Link
                 key={cat.id}
                 to={`/search?category=${cat.slug}`}
                 className="flex flex-col items-center justify-center p-5 md:p-6 bg-white border border-slate-200 rounded-lg hover:border-brand-600 hover:shadow-md group transition-all"
               >
                 <span className="material-symbols-outlined text-[28px] md:text-[32px] text-slate-400 group-hover:text-brand-600 mb-2 md:mb-3 transition-colors">{cat.icon}</span>
-                <span className="text-xs md:text-sm font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{cat.name}</span>
+                <span className="text-xs md:text-sm font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{catName}</span>
               </Link>
-            ))}
+            );
+          })}
           </div>
         </section>
       </main>

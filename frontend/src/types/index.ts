@@ -48,6 +48,8 @@ export interface Review {
 export interface Category {
   id: number;
   name: string;
+  zhName: string;
+  enName: string;
   slug: string;
   icon: string;
   count: number;
@@ -127,12 +129,12 @@ export interface RouterExecuteResult {
 export interface SyncTask {
   id: number;
   name: string;
-  status: 'running' | 'completed' | 'failed' | 'pending';
   type: 'full' | 'incremental';
+  status: 'running' | 'completed' | 'failed' | 'pending';
   progress: number;
-  startedAt: string;
+  startedAt?: string;
   completedAt?: string;
-  log: string[];
+  errorMessage?: string;
 }
 
 export interface LoginRequest {

@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { skillsApi } from "../lib/api/skills";
 import { ReviewSection } from "../components/ui/ReviewSection";
 import { StarRating } from "../components/ui/StarRating";
+import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { useLanguage } from "../stores/LanguageContext";
+import { MarkdownRenderer } from "../components/ui/MarkdownRenderer";
 import type { SkillDetail } from "../types";
 
 function pickDesc(lang: string, s: { zhDescription: string; enDescription: string; description: string }): string {
@@ -14,18 +16,19 @@ function pickDesc(lang: string, s: { zhDescription: string; enDescription: strin
 
 export function Detail() {
   const { id } = useParams<{ id: string }>();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [skill, setSkill] = useState<SkillDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'readme' | 'files' | 'details'>('readme');
   const [copied, setCopied] = useState(false);
+  const [topError, setTopError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     if (id) {
       skillsApi.getById(Number(id))
         .then(setSkill)
-        .catch(() => {})
+        .catch(() => setTopError('加载技能详情失败'))
         .finally(() => setLoading(false));
     }
   }, [id]);
@@ -60,16 +63,17 @@ export function Detail() {
     return (
       <div className="w-full max-w-[1280px] mx-auto px-6 py-16 text-center">
         <span className="material-symbols-outlined text-[64px] text-slate-300">error</span>
-        <h2 className="text-xl font-bold text-slate-900 mt-4">技能未找到</h2>
-        <Link to="/" className="text-brand-600 font-medium mt-2 inline-block">返回首页</Link>
+        <h2 className="text-xl font-bold text-slate-900 mt-4">{t('技能未找到', 'Skill Not Found')}</h2>
+        <Link to="/" className="text-brand-600 font-medium mt-2 inline-block">{t('返回首页', 'Back to Home')}</Link>
       </div>
     );
   }
 
   return (
     <div className="w-full max-w-[1280px] mx-auto px-4 md:px-6 py-6 pb-24 lg:pb-6 flex flex-col gap-6">
+      <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
       <nav className="flex text-xs text-slate-500 items-center gap-2 flex-wrap">
-        <Link to="/" className="hover:text-brand-600 transition-colors">首页</Link>
+        <Link to="/" className="hover:text-brand-600 transition-colors">{t('首页', 'Home')}</Link>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
         <a href="#" className="hover:text-brand-600 transition-colors">{skill.category}</a>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
@@ -93,7 +97,7 @@ export function Detail() {
               {skill.safe && (
                 <span className="badge-green text-[11px]">
                   <span className="material-symbols-outlined text-[14px]">verified_user</span>
-                  已通过安全扫描
+                  {t('已通过安全扫描', 'Safety Verified')}
                 </span>
               )}
             </div>
@@ -111,7 +115,7 @@ export function Detail() {
               <span className="w-1 h-1 rounded-full bg-slate-300" />
               <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px] md:text-[18px]">download</span>
-                <span>{(skill.downloads / 1000).toFixed(1)}k 安装</span>
+                <span>{(skill.downloads / 1000).toFixed(1)}k {t('安装', 'installs')}</span>
               </div>
               <span className="w-1 h-1 rounded-full bg-slate-300" />
               <StarRating rating={skill.rating} size="sm" />
@@ -126,14 +130,14 @@ export function Detail() {
         <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
           <button className="btn-primary w-full md:w-auto">
             <span className="material-symbols-outlined text-[20px]">code_blocks</span>
-            在 VS Code 中安装
+            {t('在 VS Code 中安装', 'Install in VS Code')}
           </button>
           <div className="flex gap-2">
-            <button onClick={handleCopyInstall} className="btn-secondary flex-1 md:flex-none text-sm">
+            <button onClick={handleCopyInstall} className="btn-secondary flex-1 md:flex-none text-sm" aria-label={t('复制命令', 'Copy command')}>
               <span className="material-symbols-outlined text-[18px]">{copied ? 'check' : 'content_copy'}</span>
-              {copied ? '已复制' : '复制命令'}
+              {copied ? t('已复制', 'Copied') : t('复制命令', 'Copy Command')}
             </button>
-            <button className="btn-secondary p-2.5 flex items-center justify-center">
+            <button className="btn-secondary p-2.5 flex items-center justify-center" aria-label={t('收藏', 'Favorite')}>
               <span className="material-symbols-outlined text-[20px]">star</span>
             </button>
           </div>
@@ -145,8 +149,8 @@ export function Detail() {
           <div className="flex border-b border-slate-200 overflow-x-auto">
             {([
               { key: 'readme', label: 'SKILL.md', icon: 'description' },
-              { key: 'files', label: '文件目录', icon: 'folder' },
-              { key: 'details', label: '详情', icon: 'info' },
+              { key: 'files', label: t('文件目录', 'Files'), icon: 'folder' },
+              { key: 'details', label: t('详情', 'Details'), icon: 'info' },
             ] as const).map(tab => (
               <button
                 key={tab.key}
@@ -164,19 +168,8 @@ export function Detail() {
           </div>
 
           {activeTab === 'readme' && (
-            <div className="bg-[#1e1e1e] rounded-lg border border-slate-800 p-4 md:p-6 shadow-sm text-slate-300 overflow-x-auto">
-              <button onClick={handleCopyInstall} className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center">
-                <span className="material-symbols-outlined text-[16px]">content_copy</span>
-              </button>
-              {skill.readme.split('\n').map((line, idx) => {
-                if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold text-white mb-4 border-b border-slate-700 pb-2">{line.slice(2)}</h1>;
-                if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold text-white mt-6 mb-3">{line.slice(3)}</h2>;
-                if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-bold text-white mt-4 mb-2">{line.slice(4)}</h3>;
-                if (line.startsWith('```')) return null;
-                if (line.startsWith('- ')) return <li key={idx} className="text-slate-400 ml-4 list-disc">{line.slice(2)}</li>;
-                if (line.trim()) return <p key={idx} className="text-slate-400 mb-2">{line}</p>;
-                return <div key={idx} className="h-2" />;
-              })}
+            <div className="bg-[#1e1e1e] rounded-lg border border-slate-800 p-4 md:p-6 shadow-sm overflow-x-auto">
+              <MarkdownRenderer content={skill.readme} />
             </div>
           )}
 
@@ -204,37 +197,37 @@ export function Detail() {
             <div className="card p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">作者</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('作者', 'Author')}</label>
                   <p className="text-slate-900 font-medium mt-1">{skill.author}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">版本</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('版本', 'Version')}</label>
                   <p className="text-slate-900 font-medium mt-1">{skill.version}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">分类</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('分类', 'Category')}</label>
                   <p className="text-slate-900 font-medium mt-1">{skill.category}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">来源</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('来源', 'Source')}</label>
                   <p className="text-slate-900 font-medium mt-1 flex items-center gap-1">
                     {skill.source === 'official' ? (
-                      <span className="badge-blue">官方认证</span>
+                      <span className="badge-blue">{t('官方认证', 'Official')}</span>
                     ) : (
-                      <span className="badge bg-slate-50 text-slate-600 border border-slate-200">社区开源</span>
+                      <span className="badge bg-slate-50 text-slate-600 border border-slate-200">{t('社区开源', 'Community')}</span>
                     )}
                   </p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">创建时间</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('创建时间', 'Created')}</label>
                   <p className="text-slate-900 font-medium mt-1">{skill.createdAt}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">更新时间</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('更新时间', 'Updated')}</label>
                   <p className="text-slate-900 font-medium mt-1">{skill.updatedAt}</p>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">标签</label>
+                  <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('标签', 'Tags')}</label>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {skill.tags.map(tag => (
                       <span key={tag} className="badge-blue">{tag}</span>
@@ -251,7 +244,7 @@ export function Detail() {
         <aside className="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-brand-600">psychology</span>
-            相似技能推荐
+            {t('相似技能推荐', 'Similar Skills')}
           </h3>
           <div className="flex flex-col gap-3">
             {skill.similarSkills.map(s => (

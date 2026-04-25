@@ -11,7 +11,7 @@ export function StarRating({ rating, size = 'md', interactive, onChange }: Props
   const hasHalf = rating - fullStars >= 0.5;
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5" role={interactive ? 'radiogroup' : undefined} aria-label={interactive ? 'Rating' : undefined}>
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = star <= fullStars;
         const half = star === fullStars + 1 && hasHalf;
@@ -20,6 +20,7 @@ export function StarRating({ rating, size = 'md', interactive, onChange }: Props
             key={star}
             type="button"
             disabled={!interactive}
+            aria-label={interactive ? `Rate ${star} star${star > 1 ? 's' : ''}` : undefined}
             onClick={() => interactive && onChange?.(star)}
             className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform ${sizeClasses[size]}`}
           >

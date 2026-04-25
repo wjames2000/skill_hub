@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/hpds/skill-hub/internal/service"
 	"github.com/hpds/skill-hub/pkg/errno"
@@ -94,5 +92,10 @@ func (h *RouterHandler) Feedback(c *gin.Context) {
 }
 
 func (h *RouterHandler) ListLogs(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "ListRouterLogs"})
+	logs, err := h.svc.ListLogs(c.Request.Context())
+	if err != nil {
+		response.Error(c, errno.InternalError)
+		return
+	}
+	response.Success(c, gin.H{"logs": logs})
 }

@@ -5,6 +5,7 @@ import { AuthProvider } from "./stores/AuthContext";
 import { LanguageProvider } from "./stores/LanguageContext";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { ProtectedRoute } from "./components/ui/ProtectedRoute";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 
 const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
 const Search = lazy(() => import("./pages/Search").then(m => ({ default: m.Search })));
@@ -21,6 +22,7 @@ export default function App() {
       <LanguageProvider>
       <AuthProvider>
         <Suspense fallback={<LoadingScreen />}>
+          <ErrorBoundary>
           <Routes>
             <Route element={<MainLayout />}>
               <Route path="/" element={<Home />} />
@@ -33,6 +35,7 @@ export default function App() {
             <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
             <Route path="/ide" element={<IDE />} />
           </Routes>
+          </ErrorBoundary>
         </Suspense>
       </AuthProvider>
       </LanguageProvider>

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "../lib/api/admin";
 import { statsApi } from "../lib/api/stats";
+import { ErrorBanner } from "../components/ui/ErrorBanner";
+import { cn } from "../lib/utils";
 import type { Stats, SyncTask } from "../types";
 
 type AdminTab = 'dashboard' | 'sync' | 'review' | 'users' | 'logs';
@@ -14,6 +16,8 @@ export function Admin() {
   const [logs, setLogs] = useState<{ timestamp: string; level: string; message: string }[]>([]);
   const [users, setUsers] = useState<{ id: number; username: string; email: string; role: string; createdAt: string }[]>([]);
   const [triggering, setTriggering] = useState<'full' | 'incremental' | null>(null);
+  const [topError, setTopError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const tabs: { key: AdminTab; label: string; icon: string }[] = [
     { key: 'dashboard', label: '仪表盘', icon: 'dashboard' },
@@ -44,7 +48,7 @@ export function Admin() {
       await adminApi.triggerSync(type);
       const updated = await adminApi.getSyncTasks();
       setTasks(updated);
-    } catch { /* ignore */ }
+    } catch { setTopError('触发同步任务失败，请检查后端服务是否正常运行'); }
     setTriggering(null);
   };
 
@@ -84,10 +88,6 @@ export function Admin() {
             <div className="card p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">近 7 日趋势</h3>
-                <button className="text-brand-600 hover:text-brand-800 text-sm flex items-center gap-1 font-medium">
-                  查看详情
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
               </div>
               <div className="h-48 md:h-64 w-full flex items-end gap-2 pt-8 relative border-b border-l border-slate-200 pl-4 pb-4 overflow-x-auto">
                 <div className="absolute left-[-30px] bottom-4 top-8 flex flex-col justify-between text-xs text-slate-400 h-full">
@@ -180,7 +180,7 @@ export function Admin() {
                             <span className="text-xs text-slate-500">{task.progress}%</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">{task.startedAt}</td>
+                        <td className="px-4 py-3 text-xs text-slate-500">{task.startedAt || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -267,7 +267,14 @@ export function Admin() {
               </div>
             </div>
             <div className="p-4 bg-[#1e1e1e] rounded-b-lg font-mono text-xs md:text-sm text-slate-300 max-h-[600px] overflow-y-auto">
-              {logs.map((log, idx) => (
+              {logs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                  <span className="material-symbols-outlined text-[40px] mb-2">terminal</span>
+                  <p className="text-sm">暂无系统日志</p>
+                  <p className="text-xs mt-1 text-slate-600">日志数据将在 sync-worker 运行后显示</p>
+                </div>
+              ) : (
+                logs.map((log, idx) => (
                 <div key={idx} className="flex gap-2 md:gap-3 items-start py-0.5">
                   <span className="text-slate-500 whitespace-nowrap">[{log.timestamp}]</span>
                   <span className={`${
@@ -277,7 +284,8 @@ export function Admin() {
                   }`}>[{log.level}]</span>
                   <span className="text-slate-200 break-all">{log.message}</span>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
         );
@@ -288,6 +296,13 @@ export function Admin() {
     <div className="font-sans text-sm text-slate-900 bg-slate-50 min-h-screen">
       <header className="bg-white/80 backdrop-blur-md fixed top-0 right-0 left-0 flex items-center justify-between px-4 md:px-6 h-16 md:ml-56 lg:ml-64 border-b border-slate-200 z-50">
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setSidebarOpen(prev => !prev)}
+            className="md:hidden p-2 text-slate-500 hover:bg-slate-50 rounded-lg transition-colors"
+            aria-label="Toggle navigation"
+          >
+            <span className="material-symbols-outlined">{sidebarOpen ? 'close' : 'menu'}</span>
+          </button>
           <Link to="/" className="text-lg font-bold tracking-tight text-slate-900 md:hidden">SkillHub Pro</Link>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
@@ -303,7 +318,17 @@ export function Admin() {
         </div>
       </header>
 
-      <nav className="bg-white font-medium h-screen w-56 lg:w-64 border-r border-slate-200 fixed left-0 top-0 bottom-0 md:flex flex-col pt-16 z-40 hidden">
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <nav className={`bg-white font-medium h-screen w-56 lg:w-64 border-r border-slate-200 fixed left-0 top-0 bottom-0 flex-col pt-16 z-40 transition-transform duration-200 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0 md:flex`}>
         <div className="p-4 lg:p-6 pb-2">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center">
@@ -319,12 +344,14 @@ export function Admin() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+              onClick={() => { setActiveTab(tab.key); setSidebarOpen(false); }}
+              aria-current={activeTab === tab.key ? 'page' : undefined}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
                 activeTab === tab.key
                   ? 'bg-brand-50 text-brand-700 border-r-2 border-brand-600'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+              )}
             >
               <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
               <span className="text-sm">{tab.label}</span>
@@ -340,10 +367,11 @@ export function Admin() {
       </nav>
 
       <main className="md:ml-56 lg:ml-64 pt-16 min-h-screen p-4 md:p-6 max-w-[1440px] mx-auto">
+        <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
         <div className="mb-6 mt-4 md:mt-6">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-1">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 mb-1">
             {tabs.find(t => t.key === activeTab)?.label || '管理后台'}
-          </h2>
+          </h1>
           <p className="text-slate-500 text-xs md:text-sm">系统管理与监控面板</p>
         </div>
         {renderContent()}

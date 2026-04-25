@@ -46,15 +46,16 @@ export function Login() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex items-center gap-2">
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex items-center gap-2" role="alert">
                 <span className="material-symbols-outlined text-[18px]">error</span>
                 {error}
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">用户名</label>
+              <label htmlFor="login-username" className="text-sm font-medium text-slate-700">用户名</label>
               <input
+                id="login-username"
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
@@ -65,8 +66,9 @@ export function Login() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">密码</label>
+              <label htmlFor="login-password" className="text-sm font-medium text-slate-700">密码</label>
               <input
+                id="login-password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}

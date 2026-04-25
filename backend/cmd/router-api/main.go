@@ -20,6 +20,7 @@ import (
 	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/internal/router"
 	"github.com/hpds/skill-hub/internal/service"
+	"github.com/hpds/skill-hub/internal/syncer"
 	"github.com/hpds/skill-hub/internal/vectorizer"
 	"github.com/hpds/skill-hub/pkg/config"
 	"github.com/hpds/skill-hub/pkg/consul"
@@ -130,6 +131,8 @@ func main() {
 		logger.Warn("seed categories", logger.String("error", err.Error()))
 	}
 
+	syncTaskRepo := repository.NewSyncTaskRepo(dbEngine)
+
 	vectorWorker := vectorizer.NewWorker(embedder, milvusClient, skillRepo, embRepo, 3)
 
 	vectorSvc := service.NewVectorService(
@@ -138,6 +141,15 @@ func main() {
 
 	routerSvc := service.NewRouterService(
 		embedder, llmClient, rerankerClient, milvusClient, meiliClient, skillRepo, embRepo, logRepo,
+	)
+
+	syncSvc := service.NewSyncService(
+		skillRepo,
+		syncTaskRepo,
+		nil, // orchestrator
+		nil, // scheduler
+		nil, // queue
+		syncer.SyncConfig{},
 	)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -164,17 +176,33 @@ func main() {
 		authHandler := handler.NewAuthHandler(userRepo, apiKeyRepo, cfg.JWT.Secret, cfg.JWT.ExpireHour)
 		authHandler.RegisterRoutes(api)
 
+		statsHandler := handler.NewStatsHandler(skillRepo, categoryRepo, favoriteRepo)
+		statsHandler.RegisterRoutes(api)
+
 		auth := api.Group("")
 		auth.Use(middleware.AuthRequired(cfg.JWT.Secret))
 		{
 			userHandler := handler.NewUserHandler(userRepo, favoriteRepo, reviewRepo, apiKeyRepo, skillRepo)
 			userHandler.RegisterRoutes(auth)
+		}
 
-			categoryHandler := handler.NewCategoryHandler(categoryRepo)
-			categoryHandler.RegisterRoutes(auth)
+		// Category: GET routes require auth, mutation routes require admin
+		categoryHandler := handler.NewCategoryHandler(categoryRepo)
+		auth.GET("/categories", categoryHandler.ListCategories)
+		auth.GET("/categories/:id", categoryHandler.GetCategory)
 
-			statsHandler := handler.NewStatsHandler(skillRepo, categoryRepo, favoriteRepo)
-			statsHandler.RegisterRoutes(auth)
+		admin := api.Group("")
+		admin.Use(middleware.AdminRequired(cfg.JWT.Secret))
+		{
+			admin.POST("/categories", categoryHandler.CreateCategory)
+			admin.PUT("/categories/:id", categoryHandler.UpdateCategory)
+			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+
+			adminHandler := handler.NewAdminHandler(skillRepo, categoryRepo, userRepo, favoriteRepo, reviewRepo)
+			adminHandler.RegisterRoutes(admin)
+
+			syncHandler := handler.NewSyncAdminHandler(syncSvc)
+			syncHandler.RegisterRoutes(admin)
 		}
 	}
 

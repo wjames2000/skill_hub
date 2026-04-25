@@ -58,15 +58,16 @@ export function Register() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex items-center gap-2">
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg flex items-center gap-2" role="alert">
                 <span className="material-symbols-outlined text-[18px]">error</span>
                 {error}
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">用户名 *</label>
+              <label htmlFor="reg-username" className="text-sm font-medium text-slate-700">用户名 *</label>
               <input
+                id="reg-username"
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
@@ -77,8 +78,9 @@ export function Register() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">邮箱 *</label>
+              <label htmlFor="reg-email" className="text-sm font-medium text-slate-700">邮箱 *</label>
               <input
+                id="reg-email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -89,8 +91,9 @@ export function Register() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">密码 *</label>
+              <label htmlFor="reg-password" className="text-sm font-medium text-slate-700">密码 *</label>
               <input
+                id="reg-password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -101,8 +104,9 @@ export function Register() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">确认密码 *</label>
+              <label htmlFor="reg-confirm-password" className="text-sm font-medium text-slate-700">确认密码 *</label>
               <input
+                id="reg-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}

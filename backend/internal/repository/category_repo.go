@@ -8,6 +8,8 @@ import (
 type CategoryTreeNode struct {
 	ID       int64               `json:"id"`
 	Name     string              `json:"name"`
+	ZhName   string              `json:"zh_name"`
+	EnName   string              `json:"en_name"`
 	Slug     string              `json:"slug"`
 	Icon     string              `json:"icon"`
 	Count    int64               `json:"count"`
@@ -74,11 +76,13 @@ func (r *CategoryRepo) GetTree() ([]*CategoryTreeNode, error) {
 		for _, cat := range byParent[parentID] {
 			count, _ := r.GetSkillCountByCategory(cat.Name)
 			node := &CategoryTreeNode{
-				ID:    cat.ID,
-				Name:  cat.Name,
-				Slug:  cat.Slug,
-				Icon:  cat.Icon,
-				Count: count,
+				ID:     cat.ID,
+				Name:   cat.Name,
+				ZhName: cat.ZhName,
+				EnName: cat.EnName,
+				Slug:   cat.Slug,
+				Icon:   cat.Icon,
+				Count:  count,
 			}
 			node.Children = build(cat.ID)
 			nodes = append(nodes, node)

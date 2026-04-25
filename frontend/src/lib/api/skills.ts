@@ -39,10 +39,12 @@ export const skillsApi = {
   },
 
   getCategories: async () => {
-    const raw = await api.get<{ id: number; name: string; slug: string; icon: string; count: number; children: Record<string, unknown>[] }[]>('/skills/categories');
+    const raw = await api.get<{ id: number; name: string; zh_name: string; en_name: string; slug: string; icon: string; count: number; children: Record<string, unknown>[] }[]>('/skills/categories');
     const mapNode = (c: typeof raw[number]): Category => ({
       id: c.id,
       name: c.name,
+      zhName: (c.zh_name || c.name) as string,
+      enName: (c.en_name || c.name) as string,
       slug: c.slug,
       icon: c.icon || 'category',
       count: c.count,

@@ -18,10 +18,10 @@ func NewSyncAdminHandler(syncService *service.SyncService) *SyncAdminHandler {
 }
 
 func (h *SyncAdminHandler) RegisterRoutes(rg *gin.RouterGroup) {
-	rg.GET("/sync/status", h.SyncStatus)
-	rg.POST("/sync/trigger", h.TriggerSync)
-	rg.GET("/sync/tasks", h.SyncTaskList)
-	rg.GET("/stats", h.AdminStats)
+	rg.GET("/admin/sync-tasks", h.SyncTaskList)
+	rg.POST("/admin/sync-tasks", h.TriggerSync)
+	rg.GET("/admin/sync-status", h.SyncStatus)
+	rg.GET("/admin/stats", h.AdminStats)
 }
 
 func (h *SyncAdminHandler) SyncStatus(c *gin.Context) {

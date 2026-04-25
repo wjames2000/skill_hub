@@ -7,6 +7,7 @@ import (
 	"github.com/hpds/skill-hub/internal/model"
 	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/pkg/errno"
+	"github.com/hpds/skill-hub/pkg/logger"
 	"github.com/hpds/skill-hub/pkg/response"
 )
 
@@ -47,6 +48,10 @@ func (h *AdminHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.PUT("/admin/categories/:id", h.UpdateCategory)
 	rg.DELETE("/admin/categories/:id", h.DeleteCategory)
 	rg.GET("/admin/stats/dashboard", h.Dashboard)
+	rg.GET("/admin/pending-review", h.ListPendingReviews)
+	rg.PUT("/admin/skills/:id/approve", h.ApproveSkill)
+	rg.PUT("/admin/skills/:id/reject", h.RejectSkill)
+	rg.GET("/admin/logs", h.GetSystemLogs)
 }
 
 func (h *AdminHandler) ListSkills(c *gin.Context) {
@@ -208,7 +213,30 @@ func (h *AdminHandler) DeleteReview(c *gin.Context) {
 }
 
 func (h *AdminHandler) ListUsers(c *gin.Context) {
-	response.Success(c, gin.H{"message": "admin user list not implemented"})
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("page_size", "20")
+
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	users, total, err := h.userRepo.List(page, pageSize)
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"users": users,
+		"total": total,
+		"page":  page,
+		"size":  pageSize,
+	})
 }
 
 func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
@@ -385,4 +413,92 @@ func (h *AdminHandler) Dashboard(c *gin.Context) {
 		"total_stars":       stats.TotalStars,
 		"total_installs":    stats.TotalInstalls,
 	})
+}
+
+// ListPendingReviews lists skills with status = 0 (pending).
+func (h *AdminHandler) ListPendingReviews(c *gin.Context) {
+	var skills []*model.Skill
+	if err := h.skillRepo.ListQuery().
+		Where("status = ?", model.SkillStatusPending).
+		Desc("created_at").
+		Find(&skills); err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	response.Success(c, skills)
+}
+
+// ApproveSkill sets a skill's status to 1 (active).
+func (h *AdminHandler) ApproveSkill(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, errno.ParamError)
+		return
+	}
+
+	skill, err := h.skillRepo.GetByID(id)
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	if skill == nil {
+		response.Error(c, errno.NotFound)
+		return
+	}
+
+	if err := h.skillRepo.SetStatus(id, model.SkillStatusActive); err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	response.Success(c, gin.H{"message": "skill approved"})
+}
+
+// RejectSkill sets a skill's status to 2 (disabled), with an optional reason.
+func (h *AdminHandler) RejectSkill(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, errno.ParamError)
+		return
+	}
+
+	skill, err := h.skillRepo.GetByID(id)
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	if skill == nil {
+		response.Error(c, errno.NotFound)
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req) // reason is optional
+
+	if err := h.skillRepo.SetStatus(id, model.SkillStatusDisabled); err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	response.Success(c, gin.H{"message": "skill rejected", "reason": req.Reason})
+}
+
+// GetSystemLogs returns recent system logs from the in-memory ring buffer.
+// Accepts a "lines" query parameter (default 50, max 1000) to control the count.
+func (h *AdminHandler) GetSystemLogs(c *gin.Context) {
+	linesStr := c.DefaultQuery("lines", "50")
+	lines, err := strconv.Atoi(linesStr)
+	if err != nil || lines <= 0 {
+		lines = 50
+	}
+	if lines > 1000 {
+		lines = 1000
+	}
+
+	entries := logger.GetRecentLogs(lines)
+	// Ensure we return an empty JSON array (not null) when no logs exist.
+	if entries == nil {
+		entries = []logger.LogEntry{}
+	}
+	response.Success(c, entries)
 }

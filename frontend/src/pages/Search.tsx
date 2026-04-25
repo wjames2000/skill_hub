@@ -2,9 +2,9 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, type FormEvent } from "react";
 import { skillsApi } from "../lib/api/skills";
 import { routerApi } from "../lib/api/router";
-import { SkillCard } from "../components/ui/SkillCard";
-import { CategoryTree } from "../components/ui/CategoryTree";
+import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { Pagination } from "../components/ui/Pagination";
+import { CategoryTree } from "../components/ui/CategoryTree";
 import { useLanguage } from "../stores/LanguageContext";
 import type { Skill, SearchFilters, RouterMatchResult, Category } from "../types";
 
@@ -17,7 +17,7 @@ function pickDesc(lang: string, s: { zhDescription: string; enDescription: strin
 export function Search() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const query = searchParams.get('q') || '';
   const mode = searchParams.get('mode') || 'keyword';
 
@@ -32,6 +32,7 @@ export function Search() {
   const [sort, setSort] = useState<'relevance' | 'rating' | 'downloads'>('relevance');
   const [semanticResults, setSemanticResults] = useState<RouterMatchResult[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [topError, setTopError] = useState<string | null>(null);
 
   const pageSize = 10;
 
@@ -53,6 +54,7 @@ export function Search() {
 
   useEffect(() => {
     setLoading(true);
+    setTopError(null);
 
     if (!query) {
       skillsApi.list({ sort: 'installs', page, pageSize, safe: safeOnly })
@@ -60,7 +62,7 @@ export function Search() {
           setSkills(res.data);
           setTotal(res.total);
         })
-        .catch(() => {})
+        .catch(() => setTopError('加载技能列表失败'))
         .finally(() => setLoading(false));
       return;
     }
@@ -74,6 +76,7 @@ export function Search() {
         })
         .catch(() => {
           setSemanticResults([]);
+          setTopError('语义搜索失败');
         })
         .finally(() => setLoading(false));
     } else {
@@ -90,7 +93,7 @@ export function Search() {
           setSkills(res.data);
           setTotal(res.total);
         })
-        .catch(() => {})
+        .catch(() => setTopError('搜索失败'))
         .finally(() => setLoading(false));
     }
   }, [query, page, category, tags, safeOnly, sort, mode]);
@@ -110,15 +113,15 @@ export function Search() {
           type="text"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
-          className="w-full py-3 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none rounded-lg"
-          placeholder={mode === 'semantic' ? "用自然语言描述您需要的技能..." : "搜索技能，如 'Python 代码重构'"}
+          className="w-full py-3 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none rounded-lg placeholder:text-slate-500"
+          placeholder={mode === 'semantic' ? t("用自然语言描述您需要的技能...", "Describe the skill you need in natural language...") : t("搜索技能，如 'Python 代码重构'", "Search skills, e.g. 'Python code refactoring'")}
         />
         <button
           type="submit"
           disabled={!searchInput.trim()}
           className="absolute right-2 px-4 py-1.5 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
         >
-          {mode === 'semantic' ? '智能匹配' : '搜索'}
+          {mode === 'semantic' ? t('智能匹配', 'Smart Match') : t('搜索', 'Search')}
         </button>
       </form>
 
@@ -126,14 +129,14 @@ export function Search() {
       <aside className="w-full md:w-[240px] lg:w-[260px] flex-shrink-0 flex flex-col gap-6 md:sticky md:top-20">
         <div className="card p-4 flex flex-col gap-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h2 className="font-semibold text-slate-900">筛选</h2>
+            <h2 className="font-semibold text-slate-900">{t('筛选', 'Filters')}</h2>
             <button onClick={() => { setCategory(''); setTags(''); setSafeOnly(true); setSort('relevance'); }} className="text-brand-600 text-sm hover:text-brand-700 transition-colors">
-              重置
+              {t('重置', 'Reset')}
             </button>
           </div>
 
           <div className="flex flex-col gap-3">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">分类</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('分类', 'Category')}</h3>
             <div className="flex flex-col text-sm">
               <label className="flex items-center gap-2 cursor-pointer group px-3 py-2 hover:bg-slate-50 rounded">
                 <input
@@ -143,29 +146,30 @@ export function Search() {
                   onChange={() => handleFilterChange('category', '')}
                   className="w-4 h-4 border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
-                <span className="text-slate-700 group-hover:text-brand-600">全部</span>
+                <span className="text-slate-700 group-hover:text-brand-600">{t('全部', 'All')}</span>
               </label>
               <CategoryTree
                 categories={categories}
                 selected={category}
                 onSelect={(cat) => handleFilterChange('category', cat.slug)}
+                language={language}
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">标签</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('标签', 'Tags')}</h3>
             <input
               type="text"
               value={tags}
               onChange={e => { setTags(e.target.value); setPage(1); }}
-              placeholder="用逗号分隔多个标签"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:border-brand-600 focus:ring-2 focus:ring-brand-50 outline-none"
+              placeholder={t("用逗号分隔多个标签", "Use commas to separate tags")}
+               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:border-brand-600 focus:ring-2 focus:ring-brand-50 outline-none placeholder:text-slate-500"
             />
           </div>
 
           <div className="flex flex-col gap-3">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">安全</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('安全', 'Safety')}</h3>
             <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
@@ -174,17 +178,17 @@ export function Search() {
                 className="w-4 h-4 rounded border-slate-300 text-green-500 focus:ring-green-500"
               />
               <span className="material-symbols-outlined text-[16px] text-green-500">verified_user</span>
-              <span className="text-slate-700 group-hover:text-brand-600">仅显示安全</span>
+              <span className="text-slate-700 group-hover:text-brand-600">{t('仅显示安全', 'Safe Only')}</span>
             </label>
           </div>
 
           <div className="flex flex-col gap-3">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">排序</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('排序', 'Sort')}</h3>
             <div className="flex flex-col gap-1 bg-slate-50 rounded p-1 text-sm border border-slate-200">
               {[
-                { value: 'relevance', label: '匹配度最高' },
-                { value: 'rating', label: '评分最高' },
-                { value: 'downloads', label: '下载量最多' },
+                { value: 'relevance', label: t('匹配度最高', 'Best Match') },
+                { value: 'rating', label: t('评分最高', 'Top Rated') },
+                { value: 'downloads', label: t('下载量最多', 'Most Downloaded') },
               ].map(opt => (
                 <button
                   key={opt.value}
@@ -204,29 +208,30 @@ export function Search() {
       </aside>
 
       <section className="flex-1 min-w-0 flex flex-col gap-5">
+        <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
         {query && (
           <div className="flex flex-col gap-3">
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-              {mode === 'semantic' ? '智能匹配结果' : (
-                <>为您找到 <span className="text-brand-600">{total}</span> 个关于
+              {mode === 'semantic' ? t('智能匹配结果', 'Semantic Search Results') : (
+                <>{t('为您找到', 'Found')} <span className="text-brand-600">{total}</span> {t('个关于', ' results for')}
                 <span className="font-mono bg-brand-50 text-brand-700 px-2 py-0.5 rounded border border-brand-100">"{query}"</span>
-                的技能</>
+                {t('的技能', '')}</>
               )}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-400">已选筛选器:</span>
+              <span className="text-xs text-slate-400">{t('已选筛选器:', 'Active filters:')}</span>
               {category && (
                 <span className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs px-2.5 py-1 rounded-full border border-slate-200">
-                  分类: {category}
-                  <button onClick={() => handleFilterChange('category', '')}>
+                  {t('分类', 'Category')}: {category}
+                  <button onClick={() => handleFilterChange('category', '')} aria-label={t('移除筛选', 'Remove filter')}>
                     <span className="material-symbols-outlined text-[14px] cursor-pointer hover:text-red-500">close</span>
                   </button>
                 </span>
               )}
               {tags.trim() && (
                 <span className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs px-2.5 py-1 rounded-full border border-slate-200">
-                  标签: {tags}
-                  <button onClick={() => setTags('')}>
+                  {t('标签', 'Tags')}: {tags}
+                  <button onClick={() => setTags('')} aria-label={t('移除筛选', 'Remove filter')}>
                     <span className="material-symbols-outlined text-[14px] cursor-pointer hover:text-red-500">close</span>
                   </button>
                 </span>
@@ -241,14 +246,15 @@ export function Search() {
               <span className="material-symbols-outlined fill">lightbulb</span>
             </div>
             <div className="pt-1">
-              <h3 className="text-base font-semibold text-brand-900 mb-1">智能语义分析</h3>
+              <h3 className="text-base font-semibold text-brand-900 mb-1">{t('智能语义分析', 'Smart Semantic Analysis')}</h3>
               <p className="text-sm text-brand-800/80 leading-relaxed">
-                基于您的自然语言描述，系统通过向量检索和语义匹配为您推荐以下最相关的 AI 技能。
+                {t('基于您的自然语言描述，系统通过向量检索和语义匹配为您推荐以下最相关的 AI 技能。', 'Based on your natural language description, the system recommends the most relevant AI skills through vector search and semantic matching.')}
               </p>
             </div>
           </div>
         )}
 
+        <div role="status" aria-live="polite">
         {loading ? (
           <div className="flex flex-col gap-4">
             {[1, 2, 3].map(i => (
@@ -268,8 +274,8 @@ export function Search() {
         ) : skills.length === 0 ? (
           <div className="card p-12 text-center">
             <span className="material-symbols-outlined text-[48px] text-slate-300">search_off</span>
-            <h3 className="text-lg font-semibold text-slate-900 mt-4">未找到相关技能</h3>
-            <p className="text-sm text-slate-500 mt-1">请尝试调整搜索关键词或筛选条件</p>
+            <h3 className="text-lg font-semibold text-slate-900 mt-4">{t('未找到相关技能', 'No matching skills found')}</h3>
+            <p className="text-sm text-slate-500 mt-1">{t('请尝试调整搜索关键词或筛选条件', 'Try adjusting your search keywords or filters')}</p>
           </div>
         ) : (
           <>
@@ -311,7 +317,7 @@ export function Search() {
                         skill.safe ? 'bg-green-50 text-green-600 border border-green-200/50' : 'bg-amber-50 text-amber-600 border border-amber-200/50'
                       }`}>
                         <span className="material-symbols-outlined text-[14px]">{skill.safe ? 'shield' : 'warning'}</span>
-                        {skill.safe ? '已扫描安全' : '存在潜在风险'}
+                        {skill.safe ? t('已扫描安全', 'Safety Verified') : t('存在潜在风险', 'Potential Risk')}
                       </div>
                     </div>
                     <p className="text-sm text-slate-600 line-clamp-2 mt-2 leading-relaxed">{pickDesc(language, skill)}</p>
@@ -320,7 +326,7 @@ export function Search() {
                     {skill.matchScore != null && (
                       <div className="w-full hidden md:block">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs text-slate-400">匹配度</span>
+                          <span className="text-xs text-slate-400">{t('匹配度', 'Match')}</span>
                           <span className={`text-sm font-bold ${skill.matchScore >= 90 ? 'text-green-500' : 'text-brand-600'}`}>
                             {skill.matchScore}%
                           </span>
@@ -343,7 +349,7 @@ export function Search() {
                     </div>
                     <button className="btn-primary text-xs !py-1.5 !px-3 w-full hidden md:flex">
                       <span className="material-symbols-outlined text-[14px]">add_box</span>
-                      安装
+                      {t('安装', 'Install')}
                     </button>
                   </div>
                 </Link>
@@ -358,6 +364,7 @@ export function Search() {
             />
           </>
         )}
+      </div>
       </section>
       </div>
     </div>

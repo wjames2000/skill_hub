@@ -71,6 +71,15 @@ func (r *UserRepo) Update(user *model.User) error {
 	return err
 }
 
+func (r *UserRepo) List(page, pageSize int) ([]*model.User, int64, error) {
+	var users []*model.User
+	total, err := r.db.Limit(pageSize, (page-1)*pageSize).Desc("created_at").FindAndCount(&users)
+	if err != nil {
+		return nil, 0, err
+	}
+	return users, total, nil
+}
+
 func (r *UserRepo) UpdateLastLogin(id int64) error {
 	_, err := r.db.ID(id).Cols("last_login_at").Update(&model.User{})
 	return err
