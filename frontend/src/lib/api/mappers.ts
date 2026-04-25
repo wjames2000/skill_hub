@@ -1,4 +1,4 @@
-import type { Skill } from '@/src/types';
+import type { Skill, Stats } from '@/src/types';
 
 const iconMap: Record<string, string> = {
   'python': 'code',
@@ -9,6 +9,18 @@ const iconMap: Record<string, string> = {
   'shell': 'terminal',
   'sql': 'database',
 };
+
+export function mapStats(raw: Record<string, unknown>): Stats {
+  return {
+    totalSkills: (raw.total_skills as number) || 0,
+    monthlyActiveDevs: (raw.active_skills as number) || 0,
+    totalApiCalls: 0,
+    pluginInstalls: (raw.total_installs as number) || 0,
+    todayNew: 0,
+    api24hCalls: '0',
+    crawlerRunning: 0,
+  };
+}
 
 export function mapSkill(raw: Record<string, unknown>): Skill {
   return {
