@@ -1,6 +1,7 @@
 .PHONY: build clean dev-router dev-sync dev-admin
 
 CONFIG ?= config.yaml
+PORT_ADMIN ?= 8081
 
 build:
 	go build -o bin/router-api ./cmd/router-api
@@ -11,10 +12,10 @@ clean:
 	rm -rf bin/ tmp/
 
 dev-router:
-	go run ./cmd/router-api --config=$(CONFIG)
+	go run ./cmd/router-api --config=$(CONFIG) --port=8080
 
 dev-sync:
 	go run ./cmd/sync-worker --config=$(CONFIG)
 
 dev-admin:
-	go run ./cmd/admin-api --config=$(CONFIG)
+	go run ./cmd/admin-api --config=$(CONFIG) --port=$(PORT_ADMIN)

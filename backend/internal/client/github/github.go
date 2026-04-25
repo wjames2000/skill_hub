@@ -72,7 +72,7 @@ func New(tokens []string, maxPerPage int, requestDelay int) *Client {
 		tokens:       tokens,
 		currentIdx:   0,
 		baseURL:      "https://api.github.com",
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		httpClient:   &http.Client{Timeout: 120 * time.Second},
 		maxPerPage:   maxPerPage,
 		requestDelay: time.Duration(requestDelay) * time.Millisecond,
 	}
@@ -106,7 +106,12 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 
 	token := c.nextToken()
 
-	for attempt := 0; attempt < len(c.tokens)*2; attempt++ {
+	maxAttempts := len(c.tokens) * 2
+	if maxAttempts < 5 {
+		maxAttempts = 5
+	}
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
 		if err != nil {
 			return nil, fmt.Errorf("new request: %w", err)
@@ -122,6 +127,17 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 		resp, err = c.httpClient.Do(req)
 		if err != nil {
 			lastErr = fmt.Errorf("request failed: %w", err)
+			backoff := time.Duration(1<<uint(attempt)) * time.Second
+			logger.Warn("github request failed, retrying with backoff",
+				logger.String("path", path),
+				logger.Int("attempt", attempt+1),
+				logger.Duration("backoff", backoff),
+				logger.String("error", err.Error()))
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return nil, fmt.Errorf("request cancelled during backoff: %w", ctx.Err())
+			}
 			token = c.nextToken()
 			continue
 		}

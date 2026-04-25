@@ -55,10 +55,10 @@ export function Admin() {
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {[
-                { label: '技能库总量', value: stats?.totalSkills?.toLocaleString() || '12,480', change: '12%', icon: 'library_books', color: 'text-brand-600', bg: 'bg-brand-50' },
-                { label: '今日新增', value: String(stats?.todayNew || '86'), change: '5%', icon: 'add_circle', color: 'text-brand-600', bg: 'bg-brand-50' },
-                { label: 'API 24h 调用量', value: stats?.api24hCalls || '1.2M', tags: ['正常'], icon: 'api', color: 'text-amber-500', bg: 'bg-amber-50' },
-                { label: '当前爬虫状态', value: String(stats?.crawlerRunning || '3'), suffix: '个任务进行中', icon: 'bug_report', color: 'text-green-500', bg: 'bg-green-50' },
+                { label: '技能库总量', value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'library_books', color: 'text-brand-600', bg: 'bg-brand-50' },
+                { label: '今日新增', value: stats?.todayNew != null ? String(stats.todayNew) : '-', change: '5%', icon: 'add_circle', color: 'text-brand-600', bg: 'bg-brand-50' },
+                { label: 'API 24h 调用量', value: stats?.api24hCalls ?? '-', tags: ['正常'], icon: 'api', color: 'text-amber-500', bg: 'bg-amber-50' },
+                { label: '当前爬虫状态', value: stats?.crawlerRunning != null ? String(stats.crawlerRunning) : '-', suffix: '个任务进行中', icon: 'bug_report', color: 'text-green-500', bg: 'bg-green-50' },
               ].map((m, idx) => (
                 <div key={idx} className="card p-5 md:p-6">
                   <div className="flex items-center justify-between mb-3 md:mb-4">
@@ -150,11 +150,7 @@ export function Admin() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(tasks.length > 0 ? tasks : [
-                      { id: 1, name: 'GitHub Topic 同步', type: 'incremental', status: 'running', progress: 65, startedAt: '10分钟前', log: [] },
-                      { id: 2, name: 'Awesome List 扫描', type: 'full', status: 'completed', progress: 100, startedAt: '1小时前', completedAt: '30分钟前', log: [] },
-                      { id: 3, name: '向量索引重建', type: 'full', status: 'failed', progress: 42, startedAt: '2小时前', log: [] },
-                    ] as SyncTask[]).map(task => (
+                    {tasks.map(task => (
                       <tr key={task.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-slate-900">{task.name}</td>
                         <td className="px-4 py-3">
@@ -201,13 +197,7 @@ export function Admin() {
               <h3 className="text-lg md:text-xl font-bold text-slate-900">待审核技能</h3>
             </div>
             <div className="divide-y divide-slate-100">
-              {(pendingSkills.length > 0 ? pendingSkills : [
-                { id: 1, title: 'Data Processing Pipeline', author: 'alice.dev', time: '10分钟前' },
-                { id: 2, title: 'AWS S3 Bucket Analyzer', author: 'bob_smith', time: '1小时前' },
-                { id: 3, title: 'Natural Language Query to SQL', author: 'data_wizard', time: '2小时前' },
-                { id: 4, title: 'React Component Generator', author: 'ui_ninja', time: '4小时前' },
-                { id: 5, title: 'Automated PR Reviewer', author: 'ci_cd_bot', time: '5小时前' },
-              ]).map(item => (
+              {pendingSkills.map(item => (
                 <div key={item.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 group">
                   <div>
                     <h4 className="font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{item.title}</h4>
@@ -222,7 +212,7 @@ export function Admin() {
                   </div>
                 </div>
               ))}
-              {pendingSkills.length === 0 && (
+              {pendingSkills.length === 0 && !stats && (
                 <div className="p-8 text-center text-sm text-slate-500">暂无待审核技能</div>
               )}
             </div>
@@ -247,11 +237,7 @@ export function Admin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(users.length > 0 ? users : [
-                    { id: 1, username: 'admin', email: 'admin@skillhub.dev', role: 'admin', createdAt: '2024-01-01' },
-                    { id: 2, username: 'developer01', email: 'dev1@example.com', role: 'user', createdAt: '2024-03-15' },
-                    { id: 3, username: 'coder_42', email: 'coder@example.com', role: 'user', createdAt: '2024-04-20' },
-                  ]).map(user => (
+                  {users.map(user => (
                     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-slate-500">#{user.id}</td>
                       <td className="px-4 py-3 font-medium text-slate-900">{user.username}</td>
@@ -281,15 +267,7 @@ export function Admin() {
               </div>
             </div>
             <div className="p-4 bg-[#1e1e1e] rounded-b-lg font-mono text-xs md:text-sm text-slate-300 max-h-[600px] overflow-y-auto">
-              {(logs.length > 0 ? logs : [
-                { timestamp: '14:32:01', level: 'INFO', message: 'Synced repo anthropics/skills successfully.' },
-                { timestamp: '14:31:45', level: 'SYS', message: 'Vector index updated (batch #492).' },
-                { timestamp: '14:30:12', level: 'WARN', message: 'Rate limit approaching for github_api_worker_2. Backing off 5s.' },
-                { timestamp: '14:28:55', level: 'INFO', message: 'Extracted 14 new skill definitions from lang-chain/community.' },
-                { timestamp: '14:25:30', level: 'SYS', message: 'Initiating scheduled crawl for tag: data-analysis.' },
-                { timestamp: '14:20:00', level: 'INFO', message: 'Database optimization routine completed.' },
-                { timestamp: '14:15:10', level: 'SYS', message: 'Worker health check passed (12/12 online).' },
-              ]).map((log, idx) => (
+              {logs.map((log, idx) => (
                 <div key={idx} className="flex gap-2 md:gap-3 items-start py-0.5">
                   <span className="text-slate-500 whitespace-nowrap">[{log.timestamp}]</span>
                   <span className={`${

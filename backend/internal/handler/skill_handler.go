@@ -25,6 +25,8 @@ func NewSkillHandler(skillRepo *repository.SkillRepo, categoryRepo *repository.C
 
 func (h *SkillHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/skills", h.ListSkills)
+	rg.GET("/skills/trending", h.ListTrendingSkills)
+	rg.GET("/skills/latest", h.ListLatestSkills)
 	rg.GET("/skills/:id", h.GetSkill)
 	rg.POST("/skills/search", h.SearchSkills)
 }
@@ -78,6 +80,16 @@ func (h *SkillHandler) ListSkills(c *gin.Context) {
 		"page":   page,
 		"size":   pageSize,
 	})
+}
+
+func (h *SkillHandler) ListTrendingSkills(c *gin.Context) {
+	c.Request.URL.RawQuery = "sort=installs&page_size=6"
+	h.ListSkills(c)
+}
+
+func (h *SkillHandler) ListLatestSkills(c *gin.Context) {
+	c.Request.URL.RawQuery = "sort=created_at&page_size=10"
+	h.ListSkills(c)
 }
 
 func (h *SkillHandler) GetSkill(c *gin.Context) {

@@ -1,6 +1,18 @@
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { skillsApi } from "../lib/api/skills";
+import type { Skill } from "../types";
 
 export function IDE() {
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    skillsApi.getTrending()
+      .then(setSkills)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <div className="bg-white text-slate-900 font-sans h-screen flex overflow-hidden w-full">
       {/* Extension Sidebar */}
@@ -40,60 +52,43 @@ export function IDE() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-          {[
-            {
-              title: "Python Auto-Refactor",
-              downloads: "124k",
-              desc: "智能分析并重构Python代码，提升性能与可读性。支持 PEP8 标准。",
-              icon: "data_object",
-              color: "text-blue-600",
-              bg: "bg-blue-50",
-            },
-            {
-              title: "DocString Gen",
-              downloads: "89k",
-              desc: "一键为函数和类生成规范的注释文档。",
-              icon: "code_blocks",
-              color: "text-indigo-600",
-              bg: "bg-indigo-50",
-            },
-            {
-              title: "AI Bug Hunter",
-              downloads: "210k",
-              desc: "实时预测潜在的运行时错误和逻辑漏洞。",
-              icon: "bug_report",
-              color: "text-amber-500",
-              bg: "bg-amber-50",
-            },
-            {
-              title: "SQL Optimizer",
-              downloads: "45k",
-              desc: "分析内联SQL查询并建议索引优化策略。",
-              icon: "speed",
-              color: "text-green-600",
-              bg: "bg-green-50",
-            }
-          ].map((skill, i) => (
-            <div key={i} className="group border border-slate-200 rounded p-3 flex items-start gap-3 hover:bg-slate-50 hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow">
-              <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${skill.bg}`}>
-                <span className={`material-symbols-outlined text-[18px] ${skill.color}`}>{skill.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="text-sm font-bold text-slate-900 truncate">{skill.title}</h3>
-                  <span className="text-[11px] text-slate-500 flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[12px]">download</span> {skill.downloads}
-                  </span>
+          {loading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="border border-slate-200 rounded p-3 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded skeleton shrink-0" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="h-4 w-32 skeleton" />
+                    <div className="h-3 w-full skeleton" />
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                  {skill.desc}
-                </p>
-              </div>
-              <button className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm" title="安装">
-                <span className="material-symbols-outlined text-[16px]">add</span>
-              </button>
+              ))}
             </div>
-          ))}
+          ) : skills.length === 0 ? (
+            <div className="text-center text-sm text-slate-500 py-8">暂无推荐技能</div>
+          ) : (
+            skills.map(skill => (
+              <div key={skill.id} className="group border border-slate-200 rounded p-3 flex items-start gap-3 hover:bg-slate-50 hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow">
+                <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${skill.iconBg || 'bg-slate-50'}`}>
+                  <span className={`material-symbols-outlined text-[18px] ${skill.iconColor || 'text-slate-600'}`}>{skill.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <h3 className="text-sm font-bold text-slate-900 truncate">{skill.title}</h3>
+                    <span className="text-[11px] text-slate-500 flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[12px]">download</span> {(skill.downloads / 1000).toFixed(0)}k
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    {skill.description}
+                  </p>
+                </div>
+                <button className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm" title="安装">
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </main>
 

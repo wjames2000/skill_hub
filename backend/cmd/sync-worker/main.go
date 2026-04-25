@@ -37,6 +37,10 @@ func main() {
 		logger.Fatal("db init", logger.String("error", err.Error()))
 	}
 	defer dbEngine.Close()
+
+	if err := db.Migrate(dbEngine, "migrations"); err != nil {
+		logger.Fatal("db migrate", logger.String("error", err.Error()))
+	}
 	logger.Info("database connected")
 
 	redisClient, err := rds.New(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
@@ -76,7 +80,8 @@ func main() {
 
 	topicDiscovery := syncer.NewTopicDiscovery(ghClient, cfg.GitHub.SearchTopics)
 	awesomeDiscovery := syncer.NewAwesomeDiscovery(ghClient)
-	discoveryMgr := syncer.NewDiscoveryManager(topicDiscovery, awesomeDiscovery)
+	knownRepoDiscovery := syncer.NewKnownRepoDiscovery(ghClient, cfg.GitHub.KnownRepos)
+	discoveryMgr := syncer.NewDiscoveryManager(topicDiscovery, awesomeDiscovery, knownRepoDiscovery)
 
 	queue, err := syncer.NewTaskQueue(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Asynq.Enabled)
 	if err != nil {
@@ -112,6 +117,17 @@ func main() {
 	if err := scheduler.Start(); err != nil {
 		logger.Warn("scheduler start failed", logger.String("error", err.Error()))
 	}
+
+	// Trigger a full sync immediately at startup
+	go func() {
+		time.Sleep(2 * time.Second)
+		if _, err := syncSvc.TriggerFullSync(context.Background(), "topic"); err != nil {
+			logger.Warn("startup full sync trigger skipped",
+				logger.String("reason", err.Error()))
+		} else {
+			logger.Info("startup full sync triggered")
+		}
+	}()
 
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -22,7 +22,7 @@ type Scheduler struct {
 
 func NewScheduler(syncTaskRepo *repository.SyncTaskRepo, queue *TaskQueue, config SyncConfig) *Scheduler {
 	return &Scheduler{
-		cron:         gocron.New(gocron.WithSeconds(), gocron.WithLogger(&cronLogger{})),
+		cron:         gocron.New(gocron.WithLogger(&cronLogger{})),
 		syncTaskRepo: syncTaskRepo,
 		queue:        queue,
 		config:       config,

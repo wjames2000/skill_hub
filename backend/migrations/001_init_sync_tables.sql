@@ -38,13 +38,13 @@ CREATE TABLE IF NOT EXISTS skills (
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_skills_repository ON skills(repository);
-CREATE INDEX idx_skills_name ON skills(name);
-CREATE INDEX idx_skills_category ON skills(category);
-CREATE INDEX idx_skills_stars ON skills(stars DESC);
-CREATE INDEX idx_skills_status ON skills(status);
-CREATE INDEX idx_skills_scan_passed ON skills(scan_passed);
-CREATE INDEX idx_skills_last_sync_at ON skills(last_sync_at);
+CREATE INDEX IF NOT EXISTS idx_skills_repository ON skills(repository);
+CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
+CREATE INDEX IF NOT EXISTS idx_skills_category ON skills(category);
+CREATE INDEX IF NOT EXISTS idx_skills_stars ON skills(stars DESC);
+CREATE INDEX IF NOT EXISTS idx_skills_status ON skills(status);
+CREATE INDEX IF NOT EXISTS idx_skills_scan_passed ON skills(scan_passed);
+CREATE INDEX IF NOT EXISTS idx_skills_last_sync_at ON skills(last_sync_at);
 
 CREATE TABLE IF NOT EXISTS skill_versions (
     id          BIGSERIAL PRIMARY KEY,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS skill_versions (
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_skill_versions_skill_id ON skill_versions(skill_id);
+CREATE INDEX IF NOT EXISTS idx_skill_versions_skill_id ON skill_versions(skill_id);
 
 CREATE TABLE IF NOT EXISTS skill_categories (
     id          BIGSERIAL PRIMARY KEY,
@@ -90,6 +90,6 @@ CREATE TABLE IF NOT EXISTS sync_tasks (
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_sync_tasks_type ON sync_tasks(type);
-CREATE INDEX idx_sync_tasks_status ON sync_tasks(status);
-CREATE INDEX idx_sync_tasks_created_at ON sync_tasks(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sync_tasks_type ON sync_tasks(type);
+CREATE INDEX IF NOT EXISTS idx_sync_tasks_status ON sync_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_sync_tasks_created_at ON sync_tasks(created_at DESC);

@@ -46,7 +46,8 @@ func (d *TopicDiscovery) Discover(ctx context.Context, since time.Time) ([]Disco
 	for _, topic := range d.topics {
 		query := fmt.Sprintf("topic:%s sort:stars-desc", topic)
 		page := 1
-		for {
+		const maxGitHubPages = 10
+		for page <= maxGitHubPages {
 			select {
 			case <-ctx.Done():
 				return allRepos, ctx.Err()
@@ -237,6 +238,67 @@ func (d *AwesomeDiscovery) Discover(ctx context.Context, since time.Time) ([]Dis
 }
 
 func (d *PathDiscovery) getMaxPerPage() int { return d.maxPerPage }
+
+type KnownRepoDiscovery struct {
+	client *githubclient.Client
+	repos  []string
+}
+
+func NewKnownRepoDiscovery(client *githubclient.Client, repos []string) *KnownRepoDiscovery {
+	return &KnownRepoDiscovery{
+		client: client,
+		repos:  repos,
+	}
+}
+
+func (d *KnownRepoDiscovery) Name() string { return "known" }
+
+func (d *KnownRepoDiscovery) Discover(ctx context.Context, since time.Time) ([]DiscoveredRepo, error) {
+	var allRepos []DiscoveredRepo
+
+	for _, fullName := range d.repos {
+		fullName = strings.TrimSpace(fullName)
+		if fullName == "" {
+			continue
+		}
+
+		parts := strings.SplitN(fullName, "/", 2)
+		if len(parts) != 2 {
+			logger.Warn("invalid known repo format, expected owner/repo",
+				logger.String("repo", fullName))
+			continue
+		}
+
+		owner, name := parts[0], parts[1]
+
+		repoInfo, err := d.client.GetRepo(ctx, owner, name)
+		if err != nil {
+			logger.Warn("fetch known repo failed",
+				logger.String("repo", fullName),
+				logger.String("error", err.Error()))
+			continue
+		}
+
+		if repoInfo.Archived {
+			logger.Debug("skipping archived known repo", logger.String("repo", fullName))
+			continue
+		}
+
+		allRepos = append(allRepos, DiscoveredRepo{
+			Owner:    repoInfo.Owner,
+			Name:     repoInfo.Name,
+			FullName: repoInfo.FullName,
+			Stars:    repoInfo.Stars,
+			Source:   fmt.Sprintf("known:%s", fullName),
+		})
+
+		logger.Info("known repo discovered",
+			logger.String("repo", fullName),
+			logger.Int("stars", repoInfo.Stars))
+	}
+
+	return allRepos, nil
+}
 
 type DiscoveryManager struct {
 	strategies []DiscoveryStrategy

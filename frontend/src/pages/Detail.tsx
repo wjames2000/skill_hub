@@ -5,75 +5,6 @@ import { ReviewSection } from "../components/ui/ReviewSection";
 import { StarRating } from "../components/ui/StarRating";
 import type { SkillDetail } from "../types";
 
-const mockDetail: SkillDetail = {
-  id: 1,
-  title: 'Excel 趋势分析器',
-  description: '自动分析 Excel 数据集，识别季节性趋势、异常值，并生成执行摘要报告。完美集成至您的数据科学工作流。',
-  author: 'Anthropic',
-  icon: 'finance',
-  iconColor: 'text-teal-600',
-  iconBg: 'bg-teal-50',
-  tags: ['数据分析', 'Excel', '可视化'],
-  category: '数据分析',
-  version: 'v1.2.0',
-  rating: 4.8,
-  downloads: 12500,
-  installCount: 12500,
-  source: 'official',
-  safe: true,
-  createdAt: '2024-01-15',
-  updatedAt: '2024-03-20',
-  readme: `# Excel Trend Analyzer
-
-A powerful skill to automatically analyze trends in large Excel datasets using advanced LLM reasoning.
-
-## Installation
-
-\`skillhub install anthropic/excel-trend\`
-
-## Usage Example
-
-\`\`\`typescript
-import { SkillHub } from '@skillhub/core';
-
-// Initialize the analyzer
-const analyzer = new SkillHub('anthropic/excel-trend');
-
-// Run analysis on sales data
-const results = await analyzer.execute({
-  file: './Q3_Sales.xlsx',
-  targetColumn: 'Revenue',
-  detectAnomalies: true
-});
-
-console.log(results.insights);
-\`\`\`
-
-## Features
-
-- Automatic trend detection
-- Anomaly identification
-- Executive summary generation
-- Multi-sheet support
-`,
-  files: [
-    { name: 'src', path: '/src', type: 'dir' },
-    { name: 'src/index.ts', path: '/src/index.ts', type: 'file', size: 2048 },
-    { name: 'src/analyzer.ts', path: '/src/analyzer.ts', type: 'file', size: 4096 },
-    { name: 'README.md', path: '/README.md', type: 'file', size: 1024 },
-    { name: 'package.json', path: '/package.json', type: 'file', size: 512 },
-  ],
-  similarSkills: [
-    { id: 2, title: 'CSV 数据清洗', author: 'Google', icon: 'table_chart', iconColor: 'text-green-600', iconBg: 'bg-green-50', tags: ['数据处理'], category: '数据处理', version: 'v2.1', rating: 4.8, downloads: 8200, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', description: 'Automatically detects and fixes formatting issues in CSV files.' },
-    { id: 3, title: 'SQL 查询生成器', author: 'OpenAI', icon: 'query_stats', iconColor: 'text-purple-600', iconBg: 'bg-purple-50', tags: ['SQL'], category: '数据库', version: 'v1.0', rating: 4.9, downloads: 21000, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', description: 'Convert natural language questions into optimized SQL.' },
-    { id: 4, title: '图表自动生成', author: 'Anthropic', icon: 'insights', iconColor: 'text-orange-600', iconBg: 'bg-orange-50', tags: ['可视化'], category: '可视化', version: 'v0.9', rating: 4.5, downloads: 3400, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', description: 'Analyzes data arrays and suggests best charts.' },
-  ],
-  reviews: [
-    { id: 1, userId: 101, userName: '数据达人', userAvatar: '', rating: 5, comment: '非常好用的工具，帮我节省了大量数据分析时间。趋势识别非常准确！', createdAt: '3天前' },
-    { id: 2, userId: 102, userName: 'Pythonista', userAvatar: '', rating: 4, comment: '功能强大，但处理超大 Excel 文件时略慢，希望能优化性能。', createdAt: '1周前' },
-    { id: 3, userId: 103, userName: '分析师小王', userAvatar: '', rating: 5, comment: '生成的报告可以直接用于客户汇报，非常专业。', createdAt: '2周前' },
-  ],
-};
 
 export function Detail() {
   const { id } = useParams<{ id: string }>();
@@ -87,7 +18,7 @@ export function Detail() {
     if (id) {
       skillsApi.getById(Number(id))
         .then(setSkill)
-        .catch(() => setSkill(mockDetail))
+        .catch(() => {})
         .finally(() => setLoading(false));
     }
   }, [id]);

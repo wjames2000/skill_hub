@@ -22,7 +22,7 @@ redis:
 
 meili:
   host: "http://localhost:7700"
-  api_key: ""
+  api_key: "skillhub-master-key"
 
 minio:
   endpoint: "localhost:9000"
@@ -45,11 +45,17 @@ github:
     - "cursor-rules"
     - "cline-plugin"
     - "windsurf-plugin"
+  known_repos:
+    - "PatrickJS/awesome-cursorrules"
+    - "awesome-cursorrules/awesome-cursorrules"
+    - "nicknisi/awesome-cursor-rules"
+    - "cool-cursorrules/cool-cursorrules"
+    - "thedevthings/awesome-ai-assistants"
   max_per_page: 100
   request_delay: 200
 
 sync:
-  full_sync_cron: "0 0 3 * * *"
+  full_sync_cron: "0 3 * * *"
   incremental_cron: "0 */6 * * *"
   incremental_days: 7
   concurrency: 5

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { StarRating } from "./StarRating";
 import { useAuth } from "../../stores/AuthContext";
 import { Link } from "react-router-dom";
+import { skillsApi } from "../../lib/api/skills";
 import type { Review } from "../../types";
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   skillId: number;
 }
 
-export function ReviewSection({ reviews, skillId: _skillId }: Props) {
+export function ReviewSection({ reviews, skillId }: Props) {
   const { isAuthenticated } = useAuth();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -17,22 +18,15 @@ export function ReviewSection({ reviews, skillId: _skillId }: Props) {
   const [localReviews, setLocalReviews] = useState(reviews);
 
   const handleSubmit = async () => {
-    if (!rating || !comment.trim()) return;
+    if (!rating || !comment.trim() || !skillId) return;
     setSubmitting(true);
     try {
-      await new Promise(r => setTimeout(r, 500));
-      const newReview: Review = {
-        id: Date.now(),
-        userId: 0,
-        userName: '您',
-        userAvatar: '',
-        rating,
-        comment: comment.trim(),
-        createdAt: '刚刚',
-      };
+      const newReview = await skillsApi.addReview(skillId, { rating, comment: comment.trim() });
       setLocalReviews(prev => [newReview, ...prev]);
       setRating(0);
       setComment("");
+    } catch {
+      alert('提交评论失败，请稍后重试');
     } finally {
       setSubmitting(false);
     }

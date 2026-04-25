@@ -17,15 +17,6 @@ const categories = [
   { value: '数据库', label: '数据库' },
 ];
 
-const mockSkills: Skill[] = [
-  { id: 1, title: 'Pandas Excel Master', description: '深度集成 Pandas 库的智能助手，能够通过自然语言指令快速分析庞大的 Excel 文件，自动生成数据清洗脚本和可视化图表代码。', author: 'Microsoft Official', icon: 'table_chart', iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50', tags: ['数据处理', 'Excel'], category: '数据处理', version: 'v2.4.1', rating: 4.9, downloads: 124000, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', matchScore: 98 },
-  { id: 2, title: 'Excel VBA Auto-Coder', description: '专为传统 Excel 用户设计，将自然语言需求直接转化为高质量、带注释的 VBA 宏代码。', author: 'dev_community_x', icon: 'analytics', iconColor: 'text-teal-600', iconBg: 'bg-teal-50', tags: ['VBA', 'Excel'], category: '自动化脚本', version: 'v1.0.8', rating: 4.6, downloads: 56000, installCount: 0, source: 'github', safe: true, createdAt: '', updatedAt: '', matchScore: 85 },
-  { id: 3, title: 'JSON Schema 生成器', description: '自动将 JSON 数据结构推断转换为符合标准规范的 JSON Schema。', author: 'DataCraft_AI', icon: 'data_object', iconColor: 'text-blue-600', iconBg: 'bg-blue-50', tags: ['JSON', '数据处理'], category: '数据处理', version: 'v3.1.0', rating: 4.9, downloads: 12400, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', matchScore: 92 },
-  { id: 4, title: 'Python 代码重构', description: '遵循 PEP 8 规范，自动识别代码异味并重构 Python 脚本。', author: 'CodeGuru', icon: 'terminal', iconColor: 'text-green-600', iconBg: 'bg-green-50', tags: ['Python', '重构'], category: '代码生成', version: 'v2.0.0', rating: 4.8, downloads: 9800, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', matchScore: 78 },
-  { id: 5, title: 'SQL 慢查询分析器', description: '解析慢查询日志，提供索引优化建议和查询重写方案。', author: 'DB_Doctor', icon: 'analytics', iconColor: 'text-purple-600', iconBg: 'bg-purple-50', tags: ['SQL', '数据库'], category: '数据库', version: 'v1.5.0', rating: 4.7, downloads: 7600, installCount: 0, source: 'github', safe: false, createdAt: '', updatedAt: '', matchScore: 65 },
-  { id: 6, title: 'i18n 多语言自动提取', description: '扫描 React/Vue 组件库，自动提取硬编码文本并生成 i18n 文件。', author: 'FrontEnd_Ninja', icon: 'language', iconColor: 'text-orange-600', iconBg: 'bg-orange-50', tags: ['前端', 'i18n'], category: '前端', version: 'v1.2.0', rating: 4.9, downloads: 5400, installCount: 0, source: 'official', safe: true, createdAt: '', updatedAt: '', matchScore: 71 },
-];
-
 export function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -43,8 +34,18 @@ export function Search() {
   const pageSize = 10;
 
   useEffect(() => {
-    if (!query) return;
     setLoading(true);
+
+    if (!query) {
+      skillsApi.list({ sort: 'installs', page, pageSize })
+        .then(res => {
+          setSkills(res.data);
+          setTotal(res.total);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+      return;
+    }
 
     if (mode === 'semantic') {
       routerApi.match({ query, topK: 6 })
@@ -55,8 +56,6 @@ export function Search() {
         })
         .catch(() => {
           setSemanticResults([]);
-          setSkills(mockSkills);
-          setTotal(mockSkills.length);
         })
         .finally(() => setLoading(false));
     } else {
@@ -70,14 +69,7 @@ export function Search() {
           setSkills(res.data);
           setTotal(res.total);
         })
-        .catch(() => {
-          const filtered = mockSkills.filter(s =>
-            (!category || s.category === category) &&
-            (!safeOnly || s.safe)
-          );
-          setSkills(filtered);
-          setTotal(filtered.length);
-        })
+        .catch(() => {})
         .finally(() => setLoading(false));
     }
   }, [query, page, category, safeOnly, sort, mode]);

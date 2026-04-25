@@ -19,21 +19,17 @@ export const authApi = {
   },
 
   getProfile: () =>
-    api.get<User>('/auth/profile'),
+    api.get<User>('/user/profile'),
 
   updateProfile: (data: Partial<User>) =>
-    api.put<User>('/auth/profile', data),
-
-  githubLogin: () => {
-    window.location.href = `${import.meta.env.VITE_API_BASE || '/api/v1'}/auth/github`;
-  },
+    api.put<User>('/user/profile', data),
 
   getApiKeys: () =>
-    api.get<ApiKey[]>('/auth/api-keys'),
+    api.get<ApiKey[]>('/user/api-keys'),
 
   createApiKey: (name: string) =>
-    api.post<ApiKey>('/auth/api-keys', { name }),
+    api.post<ApiKey>('/user/api-keys', { name }),
 
   revokeApiKey: (id: number) =>
-    api.delete<void>(`/auth/api-keys/${id}`),
+    api.delete<void>(`/user/api-keys/${id}`),
 };

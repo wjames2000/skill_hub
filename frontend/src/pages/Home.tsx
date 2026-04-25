@@ -6,16 +6,6 @@ import { statsApi } from "../lib/api/stats";
 import { routerApi } from "../lib/api/router";
 import type { Skill, Stats } from "../types";
 
-const defaultStats: Stats = {
-  totalSkills: 12480,
-  monthlyActiveDevs: 85200,
-  totalApiCalls: 1200000000,
-  pluginInstalls: 150000,
-  todayNew: 86,
-  api24hCalls: '1.2M',
-  crawlerRunning: 3,
-};
-
 const categories = [
   { label: '文档生成', icon: 'description', query: '文档' },
   { label: '代码编写', icon: 'code', query: '代码' },
@@ -25,23 +15,11 @@ const categories = [
   { label: '翻译', icon: 'translate', query: '翻译' },
 ];
 
-const iconMap: Record<string, string> = {
-  'extension': 'extension',
-  'group': 'group',
-  'api': 'api',
-  'download': 'download',
-  'data_object': 'data_object',
-  'terminal': 'terminal',
-  'analytics': 'analytics',
-  'language': 'language',
-  'default': 'extension',
-};
-
 export function Home() {
   const navigate = useNavigate();
   const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword');
   const [searchQuery, setSearchQuery] = useState("");
-  const [stats, setStats] = useState<Stats>(defaultStats);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [trendingSkills, setTrendingSkills] = useState<Skill[]>([]);
   const [latestSkills, setLatestSkills] = useState<Skill[]>([]);
   const [semanticResults, setSemanticResults] = useState<{ title: string; reason: string }[]>([]);
@@ -81,10 +59,10 @@ export function Home() {
   };
 
   const semanticCards = [
-    { label: '可用技能总量', value: stats.totalSkills.toLocaleString(), change: '12%', icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: '月活跃开发者', value: (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k+', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: '累计 API 调用', value: (stats.totalApiCalls / 1e9).toFixed(1) + 'B', changeText: '历史总计', icon: 'api', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: 'VS Code 插件安装', value: (stats.pluginInstalls / 1000).toFixed(0) + 'k+', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: '可用技能总量', value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: '月活跃开发者', value: stats ? (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k+' : '-', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: '累计 API 调用', value: stats ? (stats.totalApiCalls / 1e9).toFixed(1) + 'B' : '-', changeText: '历史总计', icon: 'api', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: 'VS Code 插件安装', value: stats ? (stats.pluginInstalls / 1000).toFixed(0) + 'k+' : '-', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
   ];
 
   return (
@@ -237,15 +215,7 @@ export function Home() {
               {trendingSkills.length > 0 ? trendingSkills.map(skill => (
                 <SkillCard key={skill.id} skill={skill} />
               )) : (
-                <>
-                  {[{ title: 'JSON Schema 生成器', author: 'DataCraft_AI', icon: 'data_object', iconColor: 'text-blue-600', iconBg: 'bg-blue-50', tags: ['数据处理', 'JSON'], description: '自动将复杂的 JSON 数据结构推断并转换为符合标准规范的 JSON Schema', downloads: 12400, rating: 4.9, safe: true, id: 1 },
-                    { title: 'Python 代码重构优化', author: 'CodeGuru', icon: 'terminal', iconColor: 'text-green-600', iconBg: 'bg-green-50', tags: ['代码生成', 'Python'], description: '遵循 PEP 8 规范，自动识别代码异味并重构 Python 脚本', downloads: 9800, rating: 4.8, safe: true, id: 2 },
-                    { title: 'SQL 慢查询分析器', author: 'DB_Doctor', icon: 'analytics', iconColor: 'text-purple-600', iconBg: 'bg-purple-50', tags: ['数据库', 'SQL'], description: '解析慢查询日志，自动提供索引优化建议', downloads: 7600, rating: 4.7, safe: true, id: 3, source: 'github' as const, updatedAt: '', createdAt: '', installCount: 0, category: '' },
-                    { title: 'i18n 多语言自动提取', author: 'FrontEnd_Ninja', icon: 'language', iconColor: 'text-orange-600', iconBg: 'bg-orange-50', tags: ['前端', '工具'], description: '扫描 React/Vue 组件库，自动提取硬编码文本并生成 i18n 文件', downloads: 5400, rating: 4.9, safe: true, id: 4, source: 'official' as const, updatedAt: '', createdAt: '', installCount: 0, category: '' },
-                  ].map(skill => (
-                    <SkillCard key={skill.id} skill={skill as Skill} />
-                  ))}
-                </>
+                <div className="col-span-full text-center text-sm text-slate-500 py-8">暂无热门技能</div>
               )}
             </div>
           </section>
@@ -257,25 +227,22 @@ export function Home() {
             </h2>
             <div className="card p-5">
               <div className="relative border-l-2 border-slate-100 ml-3 flex flex-col gap-5 py-2">
-                {(latestSkills.length > 0 ? latestSkills : [
-                  { title: 'Docker Compose 生成器', time: '10分钟前', desc: 'DevOps / 自动化部署', active: true },
-                  { title: 'React 组件测试桩代码', time: '1小时前', desc: '前端 / 单元测试' },
-                  { title: 'Git 提交信息美化', time: '3小时前', desc: '工作流 / 工具' },
-                  { title: 'Nginx 伪静态转换', time: '5小时前', desc: '运维 / 配置' },
-                ]).map((item, idx) => (
+                {latestSkills.length > 0 ? latestSkills.map((item, idx) => (
                   <div key={idx} className="relative pl-6">
-                    <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1.5 ring-4 ring-white ${'active' in item && item.active ? 'bg-brand-600' : 'bg-slate-300'}`} />
+                    <div className="absolute w-3 h-3 rounded-full -left-[7px] top-1.5 ring-4 ring-white bg-slate-300" />
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-baseline justify-between gap-2">
-                        <Link to={`/skill/${'id' in item ? item.id : idx + 1}`} className="text-sm font-medium text-slate-900 hover:text-brand-600 transition-colors">
-                          {'title' in item ? item.title : ''}
+                        <Link to={`/skill/${item.id}`} className="text-sm font-medium text-slate-900 hover:text-brand-600 transition-colors">
+                          {item.title}
                         </Link>
-                        <span className="text-[11px] text-slate-500 shrink-0">{'time' in item ? item.time : ''}</span>
+                        <span className="text-[11px] text-slate-500 shrink-0">{item.createdAt}</span>
                       </div>
-                      <p className="text-xs text-slate-500 line-clamp-1">{'desc' in item ? item.desc : ''}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{item.description}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-sm text-slate-500 py-8">暂无最新技能</div>
+                )}
               </div>
               <Link to="/search?sort=newest" className="block text-center w-full mt-4 py-2 text-brand-600 text-sm font-medium bg-brand-50 hover:bg-brand-100 rounded transition-colors">
                 查看动态流

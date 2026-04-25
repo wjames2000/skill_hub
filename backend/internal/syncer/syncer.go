@@ -250,7 +250,9 @@ func (s *SyncOrchestrator) processRepo(ctx context.Context, repo DiscoveredRepo,
 
 	content, err := s.githubClient.GetRepoContent(ctx, repo.Owner, repo.Name, "SKILL.md", repoInfo.DefaultBranch)
 	if err != nil {
-		return fmt.Errorf("get skill.md: %w", err)
+		logger.Warn("failed to fetch SKILL.md, continuing without it",
+			logger.String("repo", repo.FullName),
+			logger.String("error", err.Error()))
 	}
 
 	var parsed *ParsedSkill

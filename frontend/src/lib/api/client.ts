@@ -41,15 +41,20 @@ async function request<T>(
     headers,
   });
 
+  const body = await response.json().catch(() => ({}));
+
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
     throw new ApiError(
       response.status,
       body.message || body.error || `Request failed: ${response.statusText}`,
     );
   }
 
-  return response.json();
+  if (body.code !== 0) {
+    throw new ApiError(response.status, body.message || 'Unknown error');
+  }
+
+  return body.data as T;
 }
 
 export const api = {

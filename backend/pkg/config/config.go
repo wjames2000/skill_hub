@@ -72,6 +72,7 @@ type ConsulConfig struct {
 type GitHubConfig struct {
 	Tokens       []string `mapstructure:"tokens"`
 	SearchTopics []string `mapstructure:"search_topics"`
+	KnownRepos   []string `mapstructure:"known_repos"`
 	MaxPerPage   int      `mapstructure:"max_per_page"`
 	RequestDelay int      `mapstructure:"request_delay"`
 }

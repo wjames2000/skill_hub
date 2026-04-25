@@ -31,9 +31,13 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
+	port := flag.Int("port", 0, "override server port")
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
+	if *port > 0 {
+		cfg.App.Port = *port
+	}
 	if err != nil {
 		panic("load config: " + err.Error())
 	}
@@ -46,6 +50,10 @@ func main() {
 		logger.Fatal("db init", logger.String("error", err.Error()))
 	}
 	defer dbEngine.Close()
+
+	if err := db.Migrate(dbEngine, "migrations"); err != nil {
+		logger.Fatal("db migrate", logger.String("error", err.Error()))
+	}
 	logger.Info("database connected")
 
 	redisClient, err := rds.New(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
