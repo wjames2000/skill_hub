@@ -428,13 +428,8 @@ func (s *SyncOrchestrator) ScanSkill(ctx context.Context, skillID int64, owner, 
 		logger.Warn("failed to clean clone dir", logger.String("dir", cloneDir))
 	}
 
-	cmd := exec.CommandContext(ctx, "git", "clone", "--depth=1", cloneURL, cloneDir)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		logger.Warn("git clone failed",
-			logger.String("repo", fullName),
-			logger.String("error", err.Error()),
-			logger.String("output", string(output)))
-		return s.skillRepo.UpdateScanResult(skillID, true, "scan skipped: clone failed")
+	if err := s.cloneWithRetry(ctx, cloneURL, cloneDir, fullName, 2); err != nil {
+		return s.skillRepo.UpdateScanResult(skillID, false, "scan failed: clone error")
 	}
 	defer func() {
 		if err := os.RemoveAll(cloneDir); err != nil {
@@ -448,6 +443,35 @@ func (s *SyncOrchestrator) ScanSkill(ctx context.Context, skillID int64, owner, 
 	}
 
 	return s.skillRepo.UpdateScanResult(skillID, result.Passed, result.Summary)
+}
+
+func (s *SyncOrchestrator) cloneWithRetry(ctx context.Context, cloneURL, cloneDir, fullName string, attempts int) error {
+	var lastErr error
+	for i := range attempts {
+		if i > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Duration(i) * time.Second):
+			}
+		}
+		cmd := exec.CommandContext(ctx, "git", "clone", "--depth=1", cloneURL, cloneDir)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			lastErr = fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
+			logger.Warn("git clone attempt failed",
+				logger.Int("attempt", i+1),
+				logger.Int("maxAttempts", attempts),
+				logger.String("repo", fullName),
+				logger.String("error", lastErr.Error()))
+			if i == attempts-1 {
+				return lastErr
+			}
+			_ = os.RemoveAll(cloneDir)
+			continue
+		}
+		return nil
+	}
+	return lastErr
 }
 
 func (s *SyncOrchestrator) SyncSingleRepo(ctx context.Context, owner, repo, fullName string) error {

@@ -3,7 +3,7 @@ import { mapSkill, mapSkillList } from './mappers';
 import type { Review, Skill, SkillDetail, SearchFilters, Category } from '@/src/types';
 
 export const skillsApi = {
-  list: async (params?: { page?: number; pageSize?: number; category?: string; sort?: string; tags?: string[] }) => {
+  list: async (params?: { page?: number; pageSize?: number; category?: string; sort?: string; tags?: string[]; safe?: boolean }) => {
     const res = await api.get<{ skills: Record<string, unknown>[]; total: number; page: number; size: number }>('/skills', params as Record<string, string | number | boolean | undefined>);
     return { data: mapSkillList(res.skills), total: res.total, page: res.page, pageSize: res.size };
   },
@@ -24,7 +24,7 @@ export const skillsApi = {
     const body: Record<string, unknown> = { query: filters.query, page: filters.page, pageSize: filters.pageSize };
     if (filters.category) body.category = filters.category;
     if (filters.tags && filters.tags.length > 0) body.tags = filters.tags;
-    if (filters.safe) body.safe = true;
+    body.safe = filters.safe ?? false;
     if (filters.sort) {
       const sortMap: Record<string, string> = { relevance: '', rating: 'score', downloads: 'installs' };
       body.sort = sortMap[filters.sort] || '';

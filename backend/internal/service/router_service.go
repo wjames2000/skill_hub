@@ -28,6 +28,7 @@ type RouterService struct {
 	milvusCli   *milvus.Client
 	meiliCli    *mls.Client
 	skillRepo   *repository.SkillRepo
+	embRepo     *repository.EmbeddingRepo
 	logRepo     *repository.RouterLogRepo
 }
 
@@ -38,6 +39,7 @@ func NewRouterService(
 	milvusCli *milvus.Client,
 	meiliCli *mls.Client,
 	skillRepo *repository.SkillRepo,
+	embRepo *repository.EmbeddingRepo,
 	logRepo *repository.RouterLogRepo,
 ) *RouterService {
 	return &RouterService{
@@ -47,6 +49,7 @@ func NewRouterService(
 		milvusCli:   milvusCli,
 		meiliCli:    meiliCli,
 		skillRepo:   skillRepo,
+		embRepo:     embRepo,
 		logRepo:     logRepo,
 	}
 }
@@ -203,9 +206,9 @@ func (s *RouterService) vectorSearch(ctx context.Context, query string, topK int
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
 
-	milvusResults, err := s.milvusCli.Search(ctx, queryVec, topK*2)
-	if err != nil || milvusResults == nil {
-		logger.Warn("milvus search failed, falling back to keyword", logger.ErrorField(err))
+	results, err := s.embRepo.SearchSimilar(queryVec, s.embedder.Model(), topK*2)
+	if err != nil {
+		logger.Warn("pg vector search failed, falling back to keyword", logger.ErrorField(err))
 
 		meiliResults, meiliErr := s.meiliCli.Search("skills", query, int64(topK))
 		if meiliErr != nil {
@@ -234,9 +237,9 @@ func (s *RouterService) vectorSearch(ctx context.Context, query string, topK int
 	skillMap := make(map[int64]*model.Skill)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	skillCh := make(chan *model.Skill, len(milvusResults))
+	skillCh := make(chan *model.Skill, len(results))
 
-	for _, r := range milvusResults {
+	for _, r := range results {
 		wg.Add(1)
 		go func(id int64) {
 			defer wg.Done()
@@ -260,7 +263,7 @@ func (s *RouterService) vectorSearch(ctx context.Context, query string, topK int
 	}
 
 	var skills []*MatchedSkill
-	for _, r := range milvusResults {
+	for _, r := range results {
 		if skill, ok := skillMap[r.ID]; ok {
 			skills = append(skills, &MatchedSkill{
 				Skill:    skill,

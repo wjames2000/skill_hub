@@ -1,5 +1,5 @@
-import { useSearchParams, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, type FormEvent } from "react";
 import { skillsApi } from "../lib/api/skills";
 import { routerApi } from "../lib/api/router";
 import { SkillCard } from "../components/ui/SkillCard";
@@ -15,11 +15,13 @@ function pickDesc(lang: string, s: { zhDescription: string; enDescription: strin
 }
 
 export function Search() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { language } = useLanguage();
   const query = searchParams.get('q') || '';
   const mode = searchParams.get('mode') || 'keyword';
 
+  const [searchInput, setSearchInput] = useState(query);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -33,6 +35,18 @@ export function Search() {
 
   const pageSize = 10;
 
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    if (!searchInput.trim()) return;
+    const params: Record<string, string> = { q: searchInput.trim() };
+    if (mode === 'semantic') params.mode = 'semantic';
+    navigate(`/search?${new URLSearchParams(params).toString()}`);
+  };
+
+  useEffect(() => {
+    setSearchInput(query);
+  }, [query]);
+
   useEffect(() => {
     skillsApi.getCategories().then(setCategories).catch(() => {});
   }, []);
@@ -41,7 +55,7 @@ export function Search() {
     setLoading(true);
 
     if (!query) {
-      skillsApi.list({ sort: 'installs', page, pageSize })
+      skillsApi.list({ sort: 'installs', page, pageSize, safe: safeOnly })
         .then(res => {
           setSkills(res.data);
           setTotal(res.total);
@@ -65,7 +79,7 @@ export function Search() {
     } else {
       const filters: SearchFilters = { query, page, pageSize };
       if (category) filters.category = category;
-      if (safeOnly) filters.safe = true;
+      filters.safe = safeOnly;
       if (sort) filters.sort = sort;
       if (tags.trim()) {
         filters.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -89,7 +103,26 @@ export function Search() {
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col gap-6">
+      <form onSubmit={handleSearch} className="relative flex items-center shadow-sm rounded-lg bg-white border border-slate-200 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-50 w-full max-w-xl">
+        <span className="material-symbols-outlined absolute left-4 text-slate-400">search</span>
+        <input
+          type="text"
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          className="w-full py-3 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none rounded-lg"
+          placeholder={mode === 'semantic' ? "用自然语言描述您需要的技能..." : "搜索技能，如 'Python 代码重构'"}
+        />
+        <button
+          type="submit"
+          disabled={!searchInput.trim()}
+          className="absolute right-2 px-4 py-1.5 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
+        >
+          {mode === 'semantic' ? '智能匹配' : '搜索'}
+        </button>
+      </form>
+
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start">
       <aside className="w-full md:w-[240px] lg:w-[260px] flex-shrink-0 flex flex-col gap-6 md:sticky md:top-20">
         <div className="card p-4 flex flex-col gap-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -326,6 +359,7 @@ export function Search() {
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }

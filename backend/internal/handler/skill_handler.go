@@ -37,6 +37,7 @@ func (h *SkillHandler) ListSkills(c *gin.Context) {
 	pageSizeStr := c.DefaultQuery("page_size", "20")
 	category := c.Query("category")
 	sort := c.DefaultQuery("sort", "stars")
+	safeStr := c.Query("safe")
 
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
@@ -51,6 +52,10 @@ func (h *SkillHandler) ListSkills(c *gin.Context) {
 
 	if category != "" {
 		sess = sess.Where("category = ?", category)
+	}
+
+	if safeStr == "true" {
+		sess = sess.Where("scan_passed = ?", true)
 	}
 
 	sess = sess.Where("status = ?", model.SkillStatusActive)
@@ -189,7 +194,11 @@ func (h *SkillHandler) SearchSkills(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.meiliCli.Search("skills", req.Query, int64(req.PageSize))
+	filter := ""
+	if req.Safe {
+		filter = "scan_passed = true"
+	}
+	resp, err := h.meiliCli.Search("skills", req.Query, int64(req.PageSize), filter)
 	if err != nil {
 		response.Error(c, errno.InternalError)
 		return

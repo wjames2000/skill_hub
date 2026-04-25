@@ -38,10 +38,14 @@ func (c *Client) DeleteDocuments(uid string, ids []string) (*meilisearch.TaskInf
 	return c.Index(uid).DeleteDocuments(ids, nil)
 }
 
-func (c *Client) Search(uid string, query string, limit int64) (*meilisearch.SearchResponse, error) {
-	return c.Index(uid).Search(query, &meilisearch.SearchRequest{
+func (c *Client) Search(uid string, query string, limit int64, filter ...string) (*meilisearch.SearchResponse, error) {
+	req := &meilisearch.SearchRequest{
 		Limit: limit,
-	})
+	}
+	if len(filter) > 0 && filter[0] != "" {
+		req.Filter = filter[0]
+	}
+	return c.Index(uid).Search(query, req)
 }
 
 func (c *Client) DeleteIndex(uid string) (*meilisearch.TaskInfo, error) {

@@ -137,7 +137,7 @@ func main() {
 	)
 
 	routerSvc := service.NewRouterService(
-		embedder, llmClient, rerankerClient, milvusClient, meiliClient, skillRepo, logRepo,
+		embedder, llmClient, rerankerClient, milvusClient, meiliClient, skillRepo, embRepo, logRepo,
 	)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -191,6 +191,12 @@ func main() {
 	defer cancel()
 
 	vectorSvc.StartWorker(ctx)
+
+	if err := vectorSvc.RevectorizeAll(ctx); err != nil {
+		logger.Warn("initial vectorization failed", logger.String("error", err.Error()))
+	} else {
+		logger.Info("initial vectorization queued")
+	}
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.App.Port),

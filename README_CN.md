@@ -27,7 +27,7 @@
   <img src="https://img.shields.io/badge/Milvus-2.3+-00A3E0?style=flat&logo=milvus" alt="Milvus"/>
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"/>
 </p>
-
+[English](https://github.com/wjames2000/skill_hub/blob/main/README.md) | 中文
 ---
 
 ## 📖 项目简介

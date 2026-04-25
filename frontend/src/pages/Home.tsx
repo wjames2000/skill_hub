@@ -4,7 +4,6 @@ import { SkillCard } from "../components/ui/SkillCard";
 import { CategoryTree } from "../components/ui/CategoryTree";
 import { skillsApi } from "../lib/api/skills";
 import { statsApi } from "../lib/api/stats";
-import { routerApi } from "../lib/api/router";
 import { useLanguage } from "../stores/LanguageContext";
 import type { Skill, Stats, Category } from "../types";
 
@@ -23,9 +22,6 @@ export function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [trendingSkills, setTrendingSkills] = useState<Skill[]>([]);
   const [latestSkills, setLatestSkills] = useState<Skill[]>([]);
-  const [semanticResults, setSemanticResults] = useState<{ title: string; reason: string }[]>([]);
-  const [semanticLoading, setSemanticLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     statsApi.getOverview().then(setStats).catch(() => {});
@@ -37,27 +33,11 @@ export function Home() {
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-
+    const params = new URLSearchParams({ q: searchQuery.trim() });
     if (searchMode === 'semantic') {
-      setSemanticLoading(true);
-      setSearching(true);
-      routerApi.match({ query: searchQuery.trim(), topK: 3 })
-        .then(results => {
-          setSemanticResults(results.map(r => ({
-            title: r.skill.title,
-            reason: r.reason,
-          })));
-        })
-        .catch(() => {
-          setSemanticResults([]);
-        })
-        .finally(() => {
-          setSemanticLoading(false);
-          setSearching(false);
-        });
-    } else {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      params.set('mode', 'semantic');
     }
+    navigate(`/search?${params.toString()}`);
   };
 
   const semanticCards = [
@@ -97,7 +77,7 @@ export function Home() {
             <div className="w-full max-w-xl mt-2">
               <div className="flex items-center gap-1 mb-3">
                 <button
-                  onClick={() => { setSearchMode('keyword'); setSemanticResults([]); }}
+                  onClick={() => setSearchMode('keyword')}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                     searchMode === 'keyword'
                       ? 'bg-brand-600 text-white'
@@ -107,7 +87,7 @@ export function Home() {
                   关键词搜索
                 </button>
                 <button
-                  onClick={() => { setSearchMode('semantic'); setSemanticResults([]); }}
+                  onClick={() => setSearchMode('semantic')}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                     searchMode === 'semantic'
                       ? 'bg-brand-600 text-white'
@@ -131,40 +111,12 @@ export function Home() {
                 />
                 <button
                   type="submit"
-                  disabled={!searchQuery.trim() || semanticLoading}
+                  disabled={!searchQuery.trim()}
                   className="absolute right-2 px-4 py-1.5 md:py-2 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
                 >
-                  {semanticLoading ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin block" />
-                  ) : (searchMode === 'semantic' ? '智能匹配' : '搜索')}
+                  {searchMode === 'semantic' ? '智能匹配' : '搜索'}
                 </button>
               </form>
-
-              {semanticResults.length > 0 && (
-                <div className="mt-4 bg-brand-50/50 border border-brand-200 rounded-lg p-4 text-left animate-fade-in">
-                  <h4 className="text-sm font-semibold text-brand-900 mb-2 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                    智能推荐结果
-                  </h4>
-                  <div className="flex flex-col gap-2">
-                    {semanticResults.map((r, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm">
-                        <span className="text-brand-600 font-medium mt-0.5">{idx + 1}.</span>
-                        <div>
-                          <span className="font-medium text-slate-900">{r.title}</span>
-                          <p className="text-xs text-slate-500 mt-0.5">{r.reason}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}&mode=semantic`)}
-                    className="mt-3 text-sm text-brand-600 font-medium hover:text-brand-700"
-                  >
-                    查看全部匹配结果 →
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </section>

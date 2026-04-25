@@ -2,6 +2,7 @@ package vectorizer
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 	"time"
@@ -93,7 +94,7 @@ func (w *Worker) processSkill(ctx context.Context, skillID int64) {
 	}
 
 	text := buildEmbeddingText(skill)
-	contentHash := fmt.Sprintf("%x", []byte(text))
+	contentHash := fmt.Sprintf("%x", sha256.Sum256([]byte(text)))
 
 	existingEmbs, err := w.embRepo.GetBySkillID(skillID)
 	if err == nil && len(existingEmbs) > 0 && existingEmbs[0].ContentHash == contentHash {
