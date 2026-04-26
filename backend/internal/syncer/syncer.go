@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,6 +15,34 @@ import (
 	"github.com/hpds/skill-hub/internal/repository"
 	"github.com/hpds/skill-hub/pkg/logger"
 )
+
+var executableExts = map[string]bool{
+	".sh": true, ".bash": true, ".zsh": true,
+	".py": true, ".js": true, ".ts": true, ".rb": true,
+	".bat": true, ".cmd": true, ".ps1": true,
+	".exe": true, ".bin": true,
+	".pl": true, ".php": true, ".lua": true,
+}
+
+func hasExecutableFiles(dir string) bool {
+	found := false
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		base := filepath.Base(path)
+		if strings.EqualFold(base, "SKILL.md") {
+			return nil
+		}
+		ext := strings.ToLower(filepath.Ext(base))
+		if executableExts[ext] {
+			found = true
+			return fmt.Errorf("found")
+		}
+		return nil
+	})
+	return found
+}
 
 type SyncConfig struct {
 	FullSyncCron    string
@@ -146,6 +175,11 @@ func (s *SyncOrchestrator) ExecuteFullSync(ctx context.Context, taskID int64, st
 	task.FinishedAt = &finish
 	_ = s.syncTaskRepo.Update(task)
 
+	if task.NewSkills == 0 && task.UpdatedSkills == 0 && len(repos) > 0 {
+		logger.Warn("full sync processed no skills. Check GitHub API rate limits and SKILL.md file availability",
+			logger.Int("total_repos", len(repos)))
+	}
+
 	logger.Info("full sync completed",
 		logger.Int64("task_id", taskID),
 		logger.Int("total_repos", task.TotalRepos),
@@ -256,7 +290,10 @@ func (s *SyncOrchestrator) ExecuteIncrementalSync(ctx context.Context, taskID in
 func (s *SyncOrchestrator) processRepo(ctx context.Context, repo DiscoveredRepo, task *model.SyncTask) error {
 	repoInfo, err := s.githubClient.GetRepo(ctx, repo.Owner, repo.Name)
 	if err != nil {
-		return fmt.Errorf("get repo info: %w", err)
+		logger.Warn("failed to get repo info, skipping",
+			logger.String("repo", repo.FullName),
+			logger.String("error", err.Error()))
+		return nil
 	}
 
 	if repoInfo.Archived {
@@ -436,6 +473,12 @@ func (s *SyncOrchestrator) ScanSkill(ctx context.Context, skillID int64, owner, 
 			logger.Warn("failed to remove clone dir", logger.String("dir", cloneDir))
 		}
 	}()
+
+	if !hasExecutableFiles(cloneDir) {
+		logger.Info("no executable files found, marking as safe",
+			logger.String("repo", fullName))
+		return s.skillRepo.UpdateScanResult(skillID, true, "safe: only skill.md or non-executable files")
+	}
 
 	result, err := s.scanner.ScanRepo(ctx, cloneDir)
 	if err != nil {

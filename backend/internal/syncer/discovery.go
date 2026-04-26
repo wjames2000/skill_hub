@@ -346,5 +346,9 @@ func (dm *DiscoveryManager) DiscoverAll(ctx context.Context, since time.Time) ([
 			logger.Int("total_unique", len(all)))
 	}
 
+	if len(all) == 0 {
+		logger.Warn("discovery returned zero repos. Check that GitHub tokens are configured in config.yaml")
+	}
+
 	return all, nil
 }

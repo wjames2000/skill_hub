@@ -19,6 +19,20 @@ export function Admin() {
   const [topError, setTopError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const handleApprove = async (id: number) => {
+    try {
+      await adminApi.approveSkill(id);
+      setPendingSkills(prev => prev.filter(s => s.id !== id));
+    } catch { setTopError('审核操作失败'); }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      await adminApi.rejectSkill(id);
+      setPendingSkills(prev => prev.filter(s => s.id !== id));
+    } catch { setTopError('审核操作失败'); }
+  };
+
   const tabs: { key: AdminTab; label: string; icon: string }[] = [
     { key: 'dashboard', label: '仪表盘', icon: 'dashboard' },
     { key: 'sync', label: '同步任务', icon: 'pest_control' },
@@ -207,8 +221,8 @@ export function Admin() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-200 bg-white hover:bg-green-50 rounded transition-colors">通过</button>
-                    <button className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 bg-white hover:bg-red-50 rounded transition-colors">驳回</button>
+                    <button onClick={() => handleApprove(item.id)} className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-200 bg-white hover:bg-green-50 rounded transition-colors">通过</button>
+                    <button onClick={() => handleReject(item.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 bg-white hover:bg-red-50 rounded transition-colors">驳回</button>
                   </div>
                 </div>
               ))}
@@ -366,7 +380,7 @@ export function Admin() {
         </div>
       </nav>
 
-      <main className="md:ml-56 lg:ml-64 pt-16 min-h-screen p-4 md:p-6 max-w-[1440px] mx-auto">
+      <main className="md:ml-56 lg:ml-64 pt-16 min-h-screen px-4 md:px-6 pb-4 md:pb-6 max-w-[1440px] mx-auto">
         <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
         <div className="mb-6 mt-4 md:mt-6">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 mb-1">

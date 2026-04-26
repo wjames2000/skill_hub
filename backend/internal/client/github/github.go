@@ -18,11 +18,57 @@ import (
 type Client struct {
 	tokens       []string
 	currentIdx   int
+	badTokens    map[int]bool
 	mu           sync.Mutex
 	baseURL      string
 	httpClient   *http.Client
 	maxPerPage   int
 	requestDelay time.Duration
+}
+
+func New(tokens []string, maxPerPage int, requestDelay int) *Client {
+	if len(tokens) == 0 || (len(tokens) == 1 && tokens[0] == "") {
+		logger.Warn("no valid GitHub tokens configured, API rate limit will be severely restricted (60 req/hr). " +
+			"Add tokens to config.yaml github.tokens for full sync to work properly")
+		tokens = []string{""}
+	}
+	if maxPerPage <= 0 {
+		maxPerPage = 100
+	}
+	return &Client{
+		tokens:       tokens,
+		currentIdx:   0,
+		badTokens:    make(map[int]bool),
+		baseURL:      "https://api.github.com",
+		httpClient:   &http.Client{Timeout: 120 * time.Second},
+		maxPerPage:   maxPerPage,
+		requestDelay: time.Duration(requestDelay) * time.Millisecond,
+	}
+}
+
+func (c *Client) nextToken() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	start := c.currentIdx
+	for {
+		if !c.badTokens[c.currentIdx] {
+			token := c.tokens[c.currentIdx]
+			c.currentIdx = (c.currentIdx + 1) % len(c.tokens)
+			return token
+		}
+		c.currentIdx = (c.currentIdx + 1) % len(c.tokens)
+		if c.currentIdx == start {
+			break
+		}
+	}
+	return ""
+}
+
+func (c *Client) markCurrentBad() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.badTokens[c.currentIdx] = true
 }
 
 type RepoInfo struct {
@@ -61,31 +107,6 @@ type RateLimitInfo struct {
 	Limit     int
 }
 
-func New(tokens []string, maxPerPage int, requestDelay int) *Client {
-	if len(tokens) == 0 {
-		tokens = []string{""}
-	}
-	if maxPerPage <= 0 {
-		maxPerPage = 100
-	}
-	return &Client{
-		tokens:       tokens,
-		currentIdx:   0,
-		baseURL:      "https://api.github.com",
-		httpClient:   &http.Client{Timeout: 120 * time.Second},
-		maxPerPage:   maxPerPage,
-		requestDelay: time.Duration(requestDelay) * time.Millisecond,
-	}
-}
-
-func (c *Client) nextToken() string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	token := c.tokens[c.currentIdx]
-	c.currentIdx = (c.currentIdx + 1) % len(c.tokens)
-	return token
-}
-
 func (c *Client) rotateOnRateLimit() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -112,6 +133,10 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 	}
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if token == "" {
+			return nil, fmt.Errorf("all tokens exhausted: %w", lastErr)
+		}
+
 		req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
 		if err != nil {
 			return nil, fmt.Errorf("new request: %w", err)
@@ -146,7 +171,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 			remaining := resp.Header.Get("X-RateLimit-Remaining")
 			if remaining == "0" || resp.StatusCode == http.StatusUnauthorized {
 				resp.Body.Close()
-				logger.Warn("github rate limit or unauthorized, rotating token",
+				c.markCurrentBad()
+				logger.Warn("github rate limit hit, marking token as bad and rotating",
 					logger.String("remaining", remaining),
 					logger.Int("attempt", attempt))
 				token = c.nextToken()
@@ -155,6 +181,11 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 				}
 				continue
 			}
+		}
+
+		if resp.StatusCode == http.StatusNotFound {
+			resp.Body.Close()
+			return nil, fmt.Errorf("not found: %d", resp.StatusCode)
 		}
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {

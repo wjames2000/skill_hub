@@ -46,7 +46,7 @@ func (rb *ringBuffer) Push(entry LogEntry) {
 	rb.mu.Unlock()
 }
 
-// Recent returns the n most recent entries, in chronological order.
+// Recent returns the n most recent entries, newest first (reverse chronological order).
 func (rb *ringBuffer) Recent(n int) []LogEntry {
 	rb.mu.Lock()
 	defer rb.mu.Unlock()
@@ -79,6 +79,11 @@ func (rb *ringBuffer) Recent(n int) []LogEntry {
 		}
 	} else {
 		copy(result, rb.buf[rb.cursor-n:rb.cursor])
+	}
+
+	// Reverse so newest entries come first.
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
 	}
 	return result
 }

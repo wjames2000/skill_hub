@@ -139,17 +139,36 @@ func main() {
 		embedder, llmClient, milvusClient, skillRepo, embRepo, vectorWorker,
 	)
 
-	routerSvc := service.NewRouterService(
-		embedder, llmClient, rerankerClient, milvusClient, meiliClient, skillRepo, embRepo, logRepo,
-	)
+	var syncQueue *syncer.TaskQueue
+	if redisClient != nil {
+		q, err := syncer.NewTaskQueue(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Asynq.Enabled)
+		if err != nil {
+			logger.Warn("sync queue unavailable", logger.String("error", err.Error()))
+		} else {
+			syncQueue = q
+		}
+	}
+
+	syncCfg := syncer.SyncConfig{
+		FullSyncCron:    cfg.Sync.FullSyncCron,
+		IncrementalCron: cfg.Sync.IncrementalCron,
+		IncrementalDays: cfg.Sync.IncrementalDays,
+		Concurrency:     cfg.Sync.Concurrency,
+		SyncTimeout:     cfg.Sync.SyncTimeout,
+		ScanEnabled:     cfg.Sync.ScanEnabled,
+	}
 
 	syncSvc := service.NewSyncService(
 		skillRepo,
 		syncTaskRepo,
-		nil, // orchestrator
-		nil, // scheduler
-		nil, // queue
-		syncer.SyncConfig{},
+		nil,
+		nil,
+		syncQueue,
+		syncCfg,
+	)
+
+	routerSvc := service.NewRouterService(
+		embedder, llmClient, rerankerClient, milvusClient, meiliClient, skillRepo, embRepo, logRepo,
 	)
 
 	gin.SetMode(gin.ReleaseMode)

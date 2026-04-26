@@ -58,7 +58,7 @@ func (r *SkillRepo) Upsert(skill *model.Skill) (bool, error) {
 
 	if existing == nil {
 		skill.LastSyncAt = time.Now()
-		skill.Status = model.SkillStatusActive
+		skill.Status = model.SkillStatusPending
 		_, err = r.db.Insert(skill)
 		if err != nil {
 			return false, fmt.Errorf("insert: %w", err)

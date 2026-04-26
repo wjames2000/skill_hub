@@ -67,7 +67,7 @@ asynq:
   concurrency: 10
 
 semgrep:
-  enabled: true
+  enabled: false
   binary: "semgrep"
   rules: "p/default"
   timeout: 300
