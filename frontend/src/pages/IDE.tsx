@@ -11,7 +11,7 @@ function pickDesc(lang: string, s: { zhDescription: string; enDescription: strin
 }
 
 export function IDE() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,16 +27,16 @@ export function IDE() {
       <nav className="bg-slate-50 h-screen w-64 border-r border-slate-200 flex flex-col overflow-y-auto shrink-0 z-10">
         <div className="px-4 py-4 border-b border-slate-200">
           <h1 className="text-lg font-black text-slate-900 uppercase tracking-wider block"><Link to="/">SkillHub Pro</Link></h1>
-          <p className="text-xs font-medium text-slate-500 mt-1">IDE Extension</p>
+          <p className="text-xs font-medium text-slate-500 mt-1">{t('IDE 扩展', 'IDE Extension')}</p>
         </div>
         <div className="flex-1 py-2 flex flex-col gap-1">
           <button className="flex items-center gap-3 px-4 py-2 bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-medium text-xs">
             <span className="material-symbols-outlined text-[18px]">explore</span>
-            发现
+            {t('发现', 'Discover')}
           </button>
           <button className="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 border-l-4 border-transparent transition-all text-xs">
             <span className="material-symbols-outlined text-[18px]">extension</span>
-            我的技能
+            {t('我的技能', 'My Skills')}
           </button>
         </div>
       </nav>
@@ -49,13 +49,13 @@ export function IDE() {
             <input 
               type="text" 
                className="w-full pl-10 pr-3 py-2 bg-slate-50 text-slate-900 border border-slate-200 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm placeholder:text-slate-500 transition-colors" 
-              placeholder="搜索技能..." 
+              placeholder={t('搜索技能...', 'Search skills...')} 
             />
           </div>
           <div className="bg-blue-50 border border-blue-100 rounded p-3 flex items-start gap-2 mt-2">
             <span className="text-[14px]">💡</span>
             <p className="text-xs text-slate-600 leading-relaxed">
-              推荐：根据当前 <code className="font-mono text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-100 text-[11px]">.py</code> 文件，建议安装 Python 代码优化技能
+              {t('推荐：根据当前', 'Tip: Based on your current')} <code className="font-mono text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-100 text-[11px]">.py</code> {t('文件，建议安装 Python 代码优化技能', 'file, consider installing a Python code optimization skill')}
             </p>
           </div>
         </div>
@@ -73,7 +73,7 @@ export function IDE() {
               ))}
             </div>
           ) : skills.length === 0 ? (
-            <div className="text-center text-sm text-slate-500 py-8">暂无推荐技能</div>
+            <div className="text-center text-sm text-slate-500 py-8">{t('暂无推荐技能', 'No recommended skills')}</div>
           ) : (
             skills.map(skill => (
               <div key={skill.id} className="group border border-slate-200 rounded p-3 flex items-start gap-3 hover:bg-slate-50 hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow">
@@ -91,7 +91,7 @@ export function IDE() {
                     {pickDesc(language, skill)}
                   </p>
                 </div>
-                <button className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm" title="安装">
+                <button className="shrink-0 w-7 h-7 flex items-center justify-center rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm" title={t('安装', 'Install')}>
                   <span className="material-symbols-outlined text-[16px]">add</span>
                 </button>
               </div>

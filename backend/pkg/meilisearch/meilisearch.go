@@ -3,6 +3,7 @@ package meilisearch
 import (
 	"fmt"
 
+	"github.com/hpds/skill-hub/pkg/logger"
 	"github.com/meilisearch/meilisearch-go"
 )
 
@@ -20,10 +21,32 @@ func New(host, apiKey string) (*Client, error) {
 }
 
 func (c *Client) CreateIndex(uid, primaryKey string) (*meilisearch.TaskInfo, error) {
-	return c.ServiceManager.CreateIndex(&meilisearch.IndexConfig{
+	task, err := c.ServiceManager.CreateIndex(&meilisearch.IndexConfig{
 		Uid:        uid,
 		PrimaryKey: primaryKey,
 	})
+	if err != nil {
+		return task, err
+	}
+	// Configure filterable attributes for the skills index
+	attrs := []interface{}{"category", "scan_passed", "status", "tags"}
+	_, err = c.Index(uid).UpdateFilterableAttributes(&attrs)
+	return task, err
+}
+
+func (c *Client) EnsureIndex(uid, primaryKey string) error {
+	_, err := c.ServiceManager.GetIndex(uid)
+	if err == nil {
+		// Index exists, ensure filterable attributes are configured
+		attrs := []interface{}{"category", "scan_passed", "status", "tags"}
+		_, setErr := c.Index(uid).UpdateFilterableAttributes(&attrs)
+		if setErr != nil {
+			logger.Warn("failed to update filterable attributes", logger.String("error", setErr.Error()))
+		}
+		return nil
+	}
+	_, createErr := c.CreateIndex(uid, primaryKey)
+	return createErr
 }
 
 func (c *Client) AddDocuments(uid string, docs interface{}) (*meilisearch.TaskInfo, error) {

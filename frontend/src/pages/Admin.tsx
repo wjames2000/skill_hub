@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "../lib/api/admin";
 import { statsApi } from "../lib/api/stats";
+import { useLanguage } from "../stores/LanguageContext";
 import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { cn } from "../lib/utils";
 import type { Stats, SyncTask } from "../types";
@@ -9,6 +10,7 @@ import type { Stats, SyncTask } from "../types";
 type AdminTab = 'dashboard' | 'sync' | 'review' | 'users' | 'logs';
 
 export function Admin() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [tasks, setTasks] = useState<SyncTask[]>([]);
@@ -23,22 +25,22 @@ export function Admin() {
     try {
       await adminApi.approveSkill(id);
       setPendingSkills(prev => prev.filter(s => s.id !== id));
-    } catch { setTopError('审核操作失败'); }
+    } catch { setTopError(t('审核操作失败', 'Review operation failed')); }
   };
 
   const handleReject = async (id: number) => {
     try {
       await adminApi.rejectSkill(id);
       setPendingSkills(prev => prev.filter(s => s.id !== id));
-    } catch { setTopError('审核操作失败'); }
+    } catch { setTopError(t('审核操作失败', 'Review operation failed')); }
   };
 
-  const tabs: { key: AdminTab; label: string; icon: string }[] = [
-    { key: 'dashboard', label: '仪表盘', icon: 'dashboard' },
-    { key: 'sync', label: '同步任务', icon: 'pest_control' },
-    { key: 'review', label: '技能审核', icon: 'verified' },
-    { key: 'users', label: '用户管理', icon: 'group' },
-    { key: 'logs', label: '系统日志', icon: 'terminal' },
+  const tabs: { key: AdminTab; label_zh: string; label_en: string; icon: string }[] = [
+    { key: 'dashboard', label_zh: '仪表盘', label_en: 'Dashboard', icon: 'dashboard' },
+    { key: 'sync', label_zh: '同步任务', label_en: 'Sync Tasks', icon: 'pest_control' },
+    { key: 'review', label_zh: '技能审核', label_en: 'Review', icon: 'verified' },
+    { key: 'users', label_zh: '用户管理', label_en: 'Users', icon: 'group' },
+    { key: 'logs', label_zh: '系统日志', label_en: 'Logs', icon: 'terminal' },
   ];
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function Admin() {
         id: s.id,
         title: s.title,
         author: s.author,
-        time: '刚刚',
+        time: t('刚刚', 'Just now'),
       })));
     }).catch(() => {});
     adminApi.getSystemLogs(50).then(setLogs).catch(() => {});
@@ -62,7 +64,7 @@ export function Admin() {
       await adminApi.triggerSync(type);
       const updated = await adminApi.getSyncTasks();
       setTasks(updated);
-    } catch { setTopError('触发同步任务失败，请检查后端服务是否正常运行'); }
+    } catch { setTopError(t('触发同步任务失败，请检查后端服务是否正常运行', 'Failed to trigger sync task, please check if the backend service is running')); }
     setTriggering(null);
   };
 
@@ -73,10 +75,10 @@ export function Admin() {
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {[
-                { label: '技能库总量', value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'library_books', color: 'text-brand-600', bg: 'bg-brand-50' },
-                { label: '今日新增', value: stats?.todayNew != null ? String(stats.todayNew) : '-', change: '5%', icon: 'add_circle', color: 'text-brand-600', bg: 'bg-brand-50' },
-                { label: 'API 24h 调用量', value: stats?.api24hCalls ?? '-', tags: ['正常'], icon: 'api', color: 'text-amber-500', bg: 'bg-amber-50' },
-                { label: '当前爬虫状态', value: stats?.crawlerRunning != null ? String(stats.crawlerRunning) : '-', suffix: '个任务进行中', icon: 'bug_report', color: 'text-green-500', bg: 'bg-green-50' },
+                { label: t('技能库总量', 'Total Skills'), value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'library_books', color: 'text-brand-600', bg: 'bg-brand-50' },
+                { label: t('今日新增', 'New Today'), value: stats?.todayNew != null ? String(stats.todayNew) : '-', change: '5%', icon: 'add_circle', color: 'text-brand-600', bg: 'bg-brand-50' },
+                { label: t('API 24h 调用量', 'API 24h Calls'), value: stats?.api24hCalls ?? '-', tags: [t('正常', 'Normal')], icon: 'api', color: 'text-amber-500', bg: 'bg-amber-50' },
+                { label: t('当前爬虫状态', 'Crawler Status'), value: stats?.crawlerRunning != null ? String(stats.crawlerRunning) : '-', suffix: t('个任务进行中', ' tasks running'), icon: 'bug_report', color: 'text-green-500', bg: 'bg-green-50' },
               ].map((m, idx) => (
                 <div key={idx} className="card p-5 md:p-6">
                   <div className="flex items-center justify-between mb-3 md:mb-4">
@@ -101,7 +103,7 @@ export function Admin() {
 
             <div className="card p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg md:text-xl font-bold text-slate-900">近 7 日趋势</h3>
+                <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('近 7 日趋势', '7-Day Trend')}</h3>
               </div>
               <div className="h-48 md:h-64 w-full flex items-end gap-2 pt-8 relative border-b border-l border-slate-200 pl-4 pb-4 overflow-x-auto">
                 <div className="absolute left-[-30px] bottom-4 top-8 flex flex-col justify-between text-xs text-slate-400 h-full">
@@ -109,7 +111,7 @@ export function Admin() {
                   <span>5k</span>
                   <span>0</span>
                 </div>
-                {['周一','周二','周三','周四','周五','周六','周日'].map((day, idx) => (
+                {[t('周一','Mon'),t('周二','Tue'),t('周三','Wed'),t('周四','Thu'),t('周五','Fri'),t('周六','Sat'),t('周日','Sun')].map((day, idx) => (
                   <div key={day} className="flex-1 min-w-[40px] flex items-end justify-around h-full relative group">
                     <div className="w-3 md:w-4 bg-brand-600/30 rounded-t hover:bg-brand-600 transition-colors cursor-pointer"
                       style={{ height: `${[40, 45, 35, 50, 60, 75, 85][idx]}%` }}
@@ -121,8 +123,8 @@ export function Admin() {
                   </div>
                 ))}
                 <div className="absolute top-0 right-0 flex gap-3 md:gap-4 text-xs font-medium text-slate-500">
-                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-600 rounded-sm" />新增技能</div>
-                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-400 rounded-sm" />API 调用量</div>
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-600 rounded-sm" />{t('新增技能', 'New Skills')}</div>
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-400 rounded-sm" />{t('API 调用量', 'API Calls')}</div>
                 </div>
               </div>
             </div>
@@ -133,21 +135,21 @@ export function Admin() {
         return (
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg md:text-xl font-bold text-slate-900">同步任务管理</h3>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('同步任务管理', 'Sync Task Management')}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleTriggerSync('incremental')}
                   disabled={triggering !== null}
                   className="btn-secondary text-sm"
                 >
-                  {triggering === 'incremental' ? '触发中...' : '增量同步'}
+                  {triggering === 'incremental' ? t('触发中...', 'Triggering...') : t('增量同步', 'Incremental Sync')}
                 </button>
                 <button
                   onClick={() => handleTriggerSync('full')}
                   disabled={triggering !== null}
                   className="btn-primary text-sm"
                 >
-                  {triggering === 'full' ? '触发中...' : '全量同步'}
+                  {triggering === 'full' ? t('触发中...', 'Triggering...') : t('全量同步', 'Full Sync')}
                 </button>
               </div>
             </div>
@@ -156,11 +158,11 @@ export function Admin() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">任务名称</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">类型</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">状态</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">进度</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">启动时间</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">{t('任务名称', 'Task Name')}</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">{t('类型', 'Type')}</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">{t('状态', 'Status')}</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">{t('进度', 'Progress')}</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">{t('启动时间', 'Start Time')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -169,7 +171,7 @@ export function Admin() {
                         <td className="px-4 py-3 font-medium text-slate-900">{task.name}</td>
                         <td className="px-4 py-3">
                           <span className="badge bg-slate-100 text-slate-600 text-[11px]">
-                            {task.type === 'full' ? '全量' : '增量'}
+                            {task.type === 'full' ? t('全量', 'Full') : t('增量', 'Incremental')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -180,7 +182,7 @@ export function Admin() {
                             'bg-slate-50 text-slate-600'
                           }`}>
                             {task.status === 'running' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
-                            {task.status === 'running' ? '运行中' : task.status === 'completed' ? '已完成' : task.status === 'failed' ? '失败' : '等待中'}
+                            {task.status === 'running' ? t('运行中', 'Running') : task.status === 'completed' ? t('已完成', 'Completed') : task.status === 'failed' ? t('失败', 'Failed') : t('等待中', 'Pending')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -208,7 +210,7 @@ export function Admin() {
         return (
           <div className="card">
             <div className="p-4 border-b border-slate-200">
-              <h3 className="text-lg md:text-xl font-bold text-slate-900">待审核技能</h3>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('待审核技能', 'Pending Review')}</h3>
             </div>
             <div className="divide-y divide-slate-100">
               {pendingSkills.map(item => (
@@ -221,13 +223,13 @@ export function Admin() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleApprove(item.id)} className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-200 bg-white hover:bg-green-50 rounded transition-colors">通过</button>
-                    <button onClick={() => handleReject(item.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 bg-white hover:bg-red-50 rounded transition-colors">驳回</button>
+                    <button onClick={() => handleApprove(item.id)} className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-200 bg-white hover:bg-green-50 rounded transition-colors">{t('通过', 'Approve')}</button>
+                    <button onClick={() => handleReject(item.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 bg-white hover:bg-red-50 rounded transition-colors">{t('驳回', 'Reject')}</button>
                   </div>
                 </div>
               ))}
               {pendingSkills.length === 0 && !stats && (
-                <div className="p-8 text-center text-sm text-slate-500">暂无待审核技能</div>
+                <div className="p-8 text-center text-sm text-slate-500">{t('暂无待审核技能', 'No skills pending review')}</div>
               )}
             </div>
           </div>
@@ -237,17 +239,17 @@ export function Admin() {
         return (
           <div className="card">
             <div className="p-4 border-b border-slate-200">
-              <h3 className="text-lg md:text-xl font-bold text-slate-900">用户管理</h3>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('用户管理', 'User Management')}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/50">
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">ID</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">用户名</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 hidden md:table-cell">邮箱</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">角色</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 hidden md:table-cell">注册时间</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">{t('ID', 'ID')}</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">{t('用户名', 'Username')}</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 hidden md:table-cell">{t('邮箱', 'Email')}</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">{t('角色', 'Role')}</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 hidden md:table-cell">{t('注册时间', 'Registered')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -258,7 +260,7 @@ export function Admin() {
                       <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{user.email}</td>
                       <td className="px-4 py-3">
                         <span className={`badge text-[11px] ${user.role === 'admin' ? 'badge-blue' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}>
-                          {user.role === 'admin' ? '管理员' : '用户'}
+                          {user.role === 'admin' ? t('管理员', 'Admin') : t('用户', 'User')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500 hidden md:table-cell">{user.createdAt}</td>
@@ -274,18 +276,18 @@ export function Admin() {
         return (
           <div className="card">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="text-lg md:text-xl font-bold text-slate-900">系统日志</h3>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('系统日志', 'System Logs')}</h3>
               <div className="flex items-center gap-2 border border-slate-200 bg-white px-2 py-1 rounded-full shadow-sm text-xs">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-slate-600 font-medium">实时</span>
+                <span className="text-slate-600 font-medium">{t('实时', 'Live')}</span>
               </div>
             </div>
             <div className="p-4 bg-[#1e1e1e] rounded-b-lg font-mono text-xs md:text-sm text-slate-300 max-h-[600px] overflow-y-auto">
               {logs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                   <span className="material-symbols-outlined text-[40px] mb-2">terminal</span>
-                  <p className="text-sm">暂无系统日志</p>
-                  <p className="text-xs mt-1 text-slate-600">日志数据将在 sync-worker 运行后显示</p>
+                  <p className="text-sm">{t('暂无系统日志', 'No system logs')}</p>
+                  <p className="text-xs mt-1 text-slate-600">{t('日志数据将在 sync-worker 运行后显示', 'Logs will appear after the sync-worker runs')}</p>
                 </div>
               ) : (
                 logs.map((log, idx) => (
@@ -326,7 +328,7 @@ export function Admin() {
           <button className="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
             <span className="material-symbols-outlined">settings</span>
           </button>
-          <Link to="/" className="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors" title="返回首页">
+          <Link to="/" className="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors" title={t('返回首页', 'Back to Home')}>
             <span className="material-symbols-outlined">home</span>
           </Link>
         </div>
@@ -368,14 +370,14 @@ export function Admin() {
               )}
             >
               <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
-              <span className="text-sm">{tab.label}</span>
+              <span className="text-sm">{t(tab.label_zh, tab.label_en)}</span>
             </button>
           ))}
         </div>
         <div className="p-2 lg:p-3 border-t border-slate-200">
           <Link to="/" className="flex items-center gap-3 px-2 lg:px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all text-sm">
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            <span>返回前台</span>
+            <span>{t('返回前台', 'Back to Front')}</span>
           </Link>
         </div>
       </nav>
@@ -384,9 +386,9 @@ export function Admin() {
         <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
         <div className="mb-6 mt-4 md:mt-6">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 mb-1">
-            {tabs.find(t => t.key === activeTab)?.label || '管理后台'}
+            {t(tabs.find(t => t.key === activeTab)?.label_zh || '管理后台', tabs.find(t => t.key === activeTab)?.label_en || 'Admin Console')}
           </h1>
-          <p className="text-slate-500 text-xs md:text-sm">系统管理与监控面板</p>
+          <p className="text-slate-500 text-xs md:text-sm">{t('系统管理与监控面板', 'System management and monitoring dashboard')}</p>
         </div>
         {renderContent()}
       </main>

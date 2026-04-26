@@ -459,13 +459,12 @@ func (s *SyncOrchestrator) runLocalScan(ctx context.Context, skill *model.Skill)
 
 func (s *SyncOrchestrator) ScanSkill(ctx context.Context, skillID int64, owner, repo, fullName string) error {
 	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
-	cloneDir := fmt.Sprintf("/tmp/skill-scan/%s", fullName)
-
-	if err := os.RemoveAll(cloneDir); err != nil {
-		logger.Warn("failed to clean clone dir", logger.String("dir", cloneDir))
+	cloneDir, err := os.MkdirTemp("", "skill-scan-*")
+	if err != nil {
+		return s.skillRepo.UpdateScanResult(skillID, false, "scan failed: create temp dir")
 	}
 
-	if err := s.cloneWithRetry(ctx, cloneURL, cloneDir, fullName, 2); err != nil {
+	if err := s.cloneWithRetry(ctx, cloneURL, cloneDir, fullName, 3); err != nil {
 		return s.skillRepo.UpdateScanResult(skillID, false, "scan failed: clone error")
 	}
 	defer func() {
@@ -492,15 +491,19 @@ func (s *SyncOrchestrator) cloneWithRetry(ctx context.Context, cloneURL, cloneDi
 	var lastErr error
 	for i := range attempts {
 		if i > 0 {
+			_ = os.RemoveAll(cloneDir)
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(time.Duration(i) * time.Second):
+			case <-time.After(time.Duration(1<<uint(i)) * time.Second):
 			}
 		}
-		cmd := exec.CommandContext(ctx, "git", "clone", "--depth=1", cloneURL, cloneDir)
-		if output, err := cmd.CombinedOutput(); err != nil {
-			lastErr = fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
+		cloneCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		cmd := exec.CommandContext(cloneCtx, "git", "-c", "http.postBuffer=524288000", "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=30", "clone", "--depth=1", cloneURL, cloneDir)
+		err := cmd.Run()
+		cancel()
+		if err != nil {
+			lastErr = fmt.Errorf("%w", err)
 			logger.Warn("git clone attempt failed",
 				logger.Int("attempt", i+1),
 				logger.Int("maxAttempts", attempts),
@@ -509,7 +512,6 @@ func (s *SyncOrchestrator) cloneWithRetry(ctx context.Context, cloneURL, cloneDi
 			if i == attempts-1 {
 				return lastErr
 			}
-			_ = os.RemoveAll(cloneDir)
 			continue
 		}
 		return nil

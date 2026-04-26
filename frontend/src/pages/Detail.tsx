@@ -6,6 +6,7 @@ import { StarRating } from "../components/ui/StarRating";
 import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { useLanguage } from "../stores/LanguageContext";
 import { MarkdownRenderer } from "../components/ui/MarkdownRenderer";
+import { getCategoryName } from "../lib/categories";
 import type { SkillDetail } from "../types";
 
 function pickDesc(lang: string, s: { zhDescription: string; enDescription: string; description: string }): string {
@@ -75,7 +76,7 @@ export function Detail() {
       <nav className="flex text-xs text-slate-500 items-center gap-2 flex-wrap">
         <Link to="/" className="hover:text-brand-600 transition-colors">{t('首页', 'Home')}</Link>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-        <a href="#" className="hover:text-brand-600 transition-colors">{skill.category}</a>
+        <a href="#" className="hover:text-brand-600 transition-colors">{getCategoryName(skill.category, language)}</a>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
         <span className="text-slate-900 font-medium truncate max-w-[200px]">{skill.title}</span>
       </nav>
@@ -174,22 +175,9 @@ export function Detail() {
           )}
 
           {activeTab === 'files' && (
-            <div className="card p-4">
-              <div className="flex flex-col gap-1">
-                {skill.files.map(file => (
-                  <div key={file.path} className="flex items-center gap-3 px-3 py-2 rounded hover:bg-slate-50 transition-colors cursor-pointer text-sm">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400">
-                      {file.type === 'dir' ? 'folder' : 'description'}
-                    </span>
-                    <span className="text-slate-700">{file.name}</span>
-                    {file.size && (
-                      <span className="text-xs text-slate-400 ml-auto">
-                        {file.size >= 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <div className="card p-8 text-center">
+              <span className="material-symbols-outlined text-[48px] text-slate-300">folder_open</span>
+              <p className="text-sm text-slate-500 mt-3">{t('文件目录将在技能同步后显示', 'File listing will be available after skill sync')}</p>
             </div>
           )}
 
@@ -206,7 +194,7 @@ export function Detail() {
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('分类', 'Category')}</label>
-                  <p className="text-slate-900 font-medium mt-1">{skill.category}</p>
+                  <p className="text-slate-900 font-medium mt-1">{getCategoryName(skill.category, language)}</p>
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('来源', 'Source')}</label>

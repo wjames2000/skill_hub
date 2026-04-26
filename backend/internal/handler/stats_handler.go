@@ -40,7 +40,7 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 
 	categoryStats := make([]gin.H, 0)
 	for _, cat := range categories {
-		count, _ := h.categoryRepo.GetSkillCountByCategory(cat.Name)
+		count, _ := h.categoryRepo.GetSkillCountByCategory(cat.Slug)
 		categoryStats = append(categoryStats, gin.H{
 			"id":      cat.ID,
 			"name":    cat.Name,

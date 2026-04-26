@@ -57,7 +57,9 @@ export function Search() {
     setTopError(null);
 
     if (!query) {
-      skillsApi.list({ sort: 'installs', page, pageSize, safe: safeOnly })
+      const listParams: { sort: string; page: number; pageSize: number; safe: boolean; category?: string } = { sort: 'installs', page, pageSize, safe: safeOnly };
+      if (category) listParams.category = category;
+      skillsApi.list(listParams)
         .then(res => {
           setSkills(res.data);
           setTotal(res.total);

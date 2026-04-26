@@ -188,6 +188,11 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 			return nil, fmt.Errorf("not found: %d", resp.StatusCode)
 		}
 
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			resp.Body.Close()
+			return nil, fmt.Errorf("end of results: %d", resp.StatusCode)
+		}
+
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return resp, nil
 		}

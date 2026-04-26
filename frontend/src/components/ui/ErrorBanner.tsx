@@ -1,9 +1,12 @@
+import { useLanguage } from "../../stores/LanguageContext";
+
 interface ErrorBannerProps {
   message: string | null;
   onDismiss?: () => void;
 }
 
 export function ErrorBanner({ message, onDismiss }: ErrorBannerProps) {
+  const { t } = useLanguage();
   if (!message) return null;
 
   return (
@@ -17,7 +20,7 @@ export function ErrorBanner({ message, onDismiss }: ErrorBannerProps) {
         <button
           onClick={onDismiss}
           className="p-1 hover:bg-red-100 rounded transition-colors shrink-0"
-          aria-label="Dismiss"
+          aria-label={t('关闭', 'Dismiss')}
         >
           <span className="material-symbols-outlined text-[16px]">close</span>
         </button>

@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -46,7 +47,7 @@ func (d *TopicDiscovery) Discover(ctx context.Context, since time.Time) ([]Disco
 	for _, topic := range d.topics {
 		query := fmt.Sprintf("topic:%s sort:stars-desc", topic)
 		page := 1
-		const maxGitHubPages = 10
+		const maxGitHubPages = 50
 		for page <= maxGitHubPages {
 			select {
 			case <-ctx.Done():
@@ -56,6 +57,9 @@ func (d *TopicDiscovery) Discover(ctx context.Context, since time.Time) ([]Disco
 
 			repos, total, err := d.client.SearchRepos(ctx, query, page)
 			if err != nil {
+				if strings.Contains(err.Error(), "end of results") {
+					break
+				}
 				logger.Warn("topic search failed",
 					logger.String("topic", topic),
 					logger.Int("page", page),
@@ -194,44 +198,81 @@ func NewAwesomeDiscovery(client *githubclient.Client) *AwesomeDiscovery {
 func (d *AwesomeDiscovery) Name() string { return "awesome" }
 
 func (d *AwesomeDiscovery) Discover(ctx context.Context, since time.Time) ([]DiscoveredRepo, error) {
-	awesomeLists := []string{
-		"awesome-ai-agents",
-		"awesome-ai-tools",
-		"awesome-chatgpt-plugins",
-		"awesome-copilot",
-		"awesome-claude",
-		"awesome-gpt",
-		"awesome-llm",
+	awesomeLists := []struct {
+		owner string
+		name  string
+	}{
+		{"PatrickJS", "awesome-cursorrules"},
+		{"awesome-cursorrules", "awesome-cursorrules"},
+		{"nicknisi", "awesome-cursor-rules"},
+		{"cool-cursorrules", "cool-cursorrules"},
+		{"thedevthings", "awesome-ai-assistants"},
+		{"steven2358", "awesome-ai-agents"},
+		{"mameiww", "awesome-ai-tools"},
+		{"dair-ai", "Prompt-Engineering-Guide"},
+		{"f", "awesome-chatgpt-prompts"},
+		{"awesome-selfhosted", "awesome-selfhosted"},
+		{"anthropics", "awesome-claude-prompts"},
+		{"mezbaul-h", "awesome-copilot"},
 	}
 
 	var allRepos []DiscoveredRepo
 	seen := make(map[string]bool)
+	re := regexp.MustCompile(`https?://github\.com/([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+?)(?:/|\)|\s|$)`)
 
-	for _, awesomeName := range awesomeLists {
-		logger.Info("searching awesome list", logger.String("name", awesomeName))
-		repos, _, err := d.client.SearchRepos(ctx, awesomeName, 1)
+	for _, al := range awesomeLists {
+		logger.Info("parsing awesome list", logger.String("repo", al.owner+"/"+al.name))
+
+		readme, err := d.client.GetReadme(ctx, al.owner, al.name, "")
 		if err != nil {
-			logger.Warn("awesome search failed",
-				logger.String("name", awesomeName),
+			logger.Warn("failed to get awesome list readme",
+				logger.String("repo", al.owner+"/"+al.name),
 				logger.String("error", err.Error()))
 			continue
 		}
 
-		for _, repo := range repos {
-			key := repo.FullName
-			if seen[key] {
+		matches := re.FindAllStringSubmatch(readme, -1)
+		for _, m := range matches {
+			fullName := strings.TrimSuffix(m[1], "/")
+			if fullName == al.owner+"/"+al.name || seen[fullName] {
 				continue
 			}
-			seen[key] = true
+			seen[fullName] = true
 
-			allRepos = append(allRepos, DiscoveredRepo{
-				Owner:    repo.Owner,
-				Name:     repo.Name,
-				FullName: repo.FullName,
-				Stars:    repo.Stars,
-				Source:   fmt.Sprintf("awesome:%s", awesomeName),
-			})
+			parts := strings.SplitN(fullName, "/", 2)
+			if len(parts) != 2 {
+				continue
+			}
+
+			if !since.IsZero() {
+				info, err := d.client.GetRepo(ctx, parts[0], parts[1])
+				if err != nil {
+					continue
+				}
+				t, err := time.Parse(time.RFC3339, info.UpdatedAt)
+				if err == nil && t.Before(since) {
+					continue
+				}
+				allRepos = append(allRepos, DiscoveredRepo{
+					Owner:    info.Owner,
+					Name:     info.Name,
+					FullName: info.FullName,
+					Stars:    info.Stars,
+					Source:   fmt.Sprintf("awesome:%s", al.name),
+				})
+			} else {
+				allRepos = append(allRepos, DiscoveredRepo{
+					Owner:    parts[0],
+					Name:     parts[1],
+					FullName: fullName,
+					Source:   fmt.Sprintf("awesome:%s", al.name),
+				})
+			}
 		}
+
+		logger.Info("awesome list parsed",
+			logger.String("list", al.name),
+			logger.Int("repos_found", len(matches)))
 	}
 
 	return allRepos, nil

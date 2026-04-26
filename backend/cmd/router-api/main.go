@@ -71,6 +71,9 @@ func main() {
 		logger.Warn("meilisearch unavailable, search disabled", logger.String("error", err.Error()))
 		meiliClient = nil
 	} else {
+		if err := meiliClient.EnsureIndex("skills", "id"); err != nil {
+			logger.Warn("meilisearch index setup failed", logger.String("error", err.Error()))
+		}
 		logger.Info("meilisearch connected")
 	}
 

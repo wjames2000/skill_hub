@@ -74,7 +74,7 @@ func (r *CategoryRepo) GetTree() ([]*CategoryTreeNode, error) {
 	build = func(parentID int64) []*CategoryTreeNode {
 		var nodes []*CategoryTreeNode
 		for _, cat := range byParent[parentID] {
-			count, _ := r.GetSkillCountByCategory(cat.Name)
+			count, _ := r.GetSkillCountByCategory(cat.Slug)
 			node := &CategoryTreeNode{
 				ID:     cat.ID,
 				Name:   cat.Name,

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"strconv"
 
 	"encoding/json"
@@ -249,8 +250,12 @@ func (h *SkillHandler) SearchSkills(c *gin.Context) {
 	}
 
 	filter := ""
-	if req.Safe {
+	if req.Safe && req.Category != "" {
+		filter = fmt.Sprintf("scan_passed = true AND category = '%s'", req.Category)
+	} else if req.Safe {
 		filter = "scan_passed = true"
+	} else if req.Category != "" {
+		filter = fmt.Sprintf("category = '%s'", req.Category)
 	}
 	resp, err := h.meiliCli.Search("skills", req.Query, int64(req.PageSize), filter)
 	if err != nil {

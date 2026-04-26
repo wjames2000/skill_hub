@@ -26,7 +26,7 @@ export function Home() {
   const [topError, setTopError] = useState<string | null>(null);
 
   useEffect(() => {
-    statsApi.getOverview().then(setStats).catch(() => setTopError('加载数据失败'));
+    statsApi.getOverview().then(setStats).catch(() => setTopError(t('加载数据失败', 'Failed to load data')));
     skillsApi.getCategories().then(setCategories).catch(() => {});
     skillsApi.getTrending().then(setTrendingSkills).catch(() => {});
     skillsApi.getLatest().then(setLatestSkills).catch(() => {});
@@ -68,7 +68,7 @@ export function Home() {
           <div className="relative z-10 max-w-3xl flex flex-col items-center gap-5">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-sm font-medium border border-brand-200/50">
               <span className="material-symbols-outlined text-sm fill">new_releases</span>
-              v2.4 发布: 支持本地模型接入
+              {t('v2.4 发布: 支持本地模型接入', 'v2.4 Release: Local Model Support')}
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
               {t('让 AI 能力的获取像安装 IDE 插件一样简单', 'Get AI capabilities as easily as installing IDE plugins')}
