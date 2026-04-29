@@ -178,3 +178,27 @@ func (r *SkillRepo) ListIDsNeedingUpdate(since time.Time, limit int) ([]int64, e
 func (r *SkillRepo) CountByStatus(status int) (int64, error) {
 	return r.db.Where("status = ?", status).Count(&model.Skill{})
 }
+
+func (r *SkillRepo) CountSince(since time.Time) (int64, error) {
+	return r.db.Where("created_at >= ?", since).Count(&model.Skill{})
+}
+
+func (r *SkillRepo) GetDailyNewCounts(days int) ([]map[string]interface{}, error) {
+	rows, err := r.db.SQL(fmt.Sprintf(
+		`SELECT DATE(created_at) as date, CAST(COUNT(*) AS INT) as count
+		 FROM skills
+		 WHERE created_at >= CURRENT_DATE - INTERVAL '%d days'
+		 GROUP BY DATE(created_at)
+		 ORDER BY date`, days)).QueryString()
+	if err != nil {
+		return nil, err
+	}
+	var result []map[string]interface{}
+	for _, row := range rows {
+		result = append(result, map[string]interface{}{
+			"date":  row["date"],
+			"count": row["count"],
+		})
+	}
+	return result, nil
+}

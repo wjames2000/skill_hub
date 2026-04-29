@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"encoding/json"
 
@@ -46,10 +47,11 @@ func (h *SkillHandler) RegisterRoutes(rg *gin.RouterGroup) {
 
 func (h *SkillHandler) ListSkills(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
-	pageSizeStr := c.DefaultQuery("page_size", "20")
+	pageSizeStr := c.DefaultQuery("pageSize", c.DefaultQuery("page_size", "20"))
 	category := c.Query("category")
 	sort := c.DefaultQuery("sort", "stars")
 	safeStr := c.Query("safe")
+	tagsStr := c.Query("tags")
 
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
@@ -68,6 +70,15 @@ func (h *SkillHandler) ListSkills(c *gin.Context) {
 
 	if safeStr == "true" {
 		sess = sess.Where("scan_passed = ?", true)
+	}
+
+	if tagsStr != "" {
+		for _, tag := range strings.Split(tagsStr, ",") {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				sess = sess.Where("(topics::text ILIKE ? OR tags::text ILIKE ?)", "%"+tag+"%", "%"+tag+"%")
+			}
+		}
 	}
 
 	sess = sess.Where("status = ?", model.SkillStatusActive)
@@ -197,8 +208,7 @@ func (h *SkillHandler) searchByDB(c *gin.Context, req *searchRequest) {
 		sess = sess.Where("category = ?", req.Category)
 	}
 	for _, tag := range req.Tags {
-		jsonTag, _ := json.Marshal(tag)
-		sess = sess.Where("JSON_CONTAINS(topics, ?) OR JSON_CONTAINS(tags, ?)", string(jsonTag), string(jsonTag))
+		sess = sess.Where("(topics::text ILIKE ? OR tags::text ILIKE ?)", "%"+tag+"%", "%"+tag+"%")
 	}
 	if req.Safe {
 		sess = sess.Where("scan_passed = ?", true)
@@ -244,7 +254,7 @@ func (h *SkillHandler) SearchSkills(c *gin.Context) {
 		req.PageSize = 20
 	}
 
-	if h.meiliCli == nil {
+	if h.meiliCli == nil || len(req.Tags) > 0 {
 		h.searchByDB(c, &req)
 		return
 	}

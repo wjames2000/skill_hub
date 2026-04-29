@@ -119,40 +119,60 @@ func (e *SkillExtractor) calculateScore(stars, forks int) float64 {
 
 func (e *SkillExtractor) inferCategory(topics []string, description string) string {
 	categoryMap := map[string]string{
-		"ai": "ai-agent", "artificial-intelligence": "ai-agent", "machine-learning": "ai-agent",
-		"nlp": "ai-agent", "llm": "ai-agent", "gpt": "ai-agent", "claude": "ai-agent",
-		"copilot": "ai-agent", "chatgpt": "ai-agent", "openai": "ai-agent",
-		"agent": "ai-agent", "rag": "ai-agent", "prompt": "ai-agent",
+		// AI Agent sub-categories
+		"ai": "atomic-skill", "artificial-intelligence": "atomic-skill", "machine-learning": "atomic-skill",
+		"nlp": "atomic-skill", "llm": "atomic-skill", "gpt": "atomic-skill", "claude": "atomic-skill",
+		"openai": "atomic-skill", "rag": "atomic-skill", "prompt": "atomic-skill",
+		"agent": "dedicated-skill", "assistant": "dedicated-skill",
+		"workflow": "workflow-skill", "pipeline": "workflow-skill",
 
-		"developer-tools": "software-engineering", "devtools": "software-engineering",
-		"cli": "software-engineering", "terminal": "software-engineering",
-		"code-review": "software-engineering", "testing": "software-engineering",
-		"deploy": "software-engineering", "ci-cd": "software-engineering",
-		"scaffold": "software-engineering", "boilerplate": "software-engineering",
-		"template": "software-engineering", "code-generator": "software-engineering",
+		// Software Engineering sub-categories
+		"code-review": "pr-review", "pr": "pr-review", "merge": "pr-review",
+		"testing": "lint-check", "lint": "lint-check", "quality": "code-quality",
+		"security-scan": "security-scan", "semgrep": "security-scan",
+		"cli": "project-init", "terminal": "project-init",
+		"scaffold": "project-init", "boilerplate": "project-init", "template": "project-init",
+		"project-init":   "project-init",
+		"code-generator": "code-generation", "codegen": "code-generation",
+		"doc-generation": "doc-generation", "docs": "doc-generation",
+		"deploy": "release-check", "ci-cd": "release-check", "release": "release-check",
+		"rollback": "rollback",
+		"devops":   "env-verification", "developer-tools": "env-verification", "devtools": "env-verification",
 
-		"content": "content-creation", "writing": "content-creation",
-		"copywriting": "content-creation", "blog": "content-creation",
-		"documentation": "content-creation", "docs": "content-creation",
-		"markdown": "content-creation", "translation": "information-processing",
-		"translate": "information-processing",
+		// Content Creation sub-categories
+		"content": "copywriting", "writing": "copywriting",
+		"copywriting": "copywriting", "blog": "copywriting",
+		"documentation": "doc-generation", "markdown": "doc-generation",
+		"visual-design": "visual-design", "design": "visual-design",
+		"multimedia": "multimedia-production", "video": "multimedia-production",
 
-		"data": "information-processing", "database": "information-processing",
-		"analytics": "information-processing", "etl": "information-processing",
-		"crawler": "information-processing", "scraper": "information-processing",
-		"visualization": "information-processing", "report": "information-processing",
+		// Information Processing sub-categories
+		"data": "data-analysis", "database": "data-analysis",
+		"analytics": "data-analysis", "etl": "data-analysis",
+		"crawler": "data-collection", "scraper": "data-collection",
+		"visualization": "data-analysis", "report": "data-analysis",
+		"translation": "translation", "translate": "translation",
+		"document-processing": "document-processing", "ocr": "document-processing",
 
-		"security": "infrastructure", "monitoring": "infrastructure",
-		"observability": "infrastructure", "devops": "infrastructure",
-		"kubernetes": "infrastructure", "docker": "infrastructure",
+		// Infrastructure sub-categories
+		"security": "resource-inspection", "monitoring": "resource-inspection",
+		"observability": "resource-inspection",
+		"kubernetes":    "cluster-management", "docker": "cluster-management",
+		"troubleshooting": "troubleshooting", "diagnostic": "troubleshooting",
+		"env-repair": "env-repair", "repair": "env-repair",
 
-		"collaboration": "team-collaboration", "workflow": "team-collaboration",
-		"project-management": "team-collaboration", "sprint": "team-collaboration",
-		"knowledge": "team-collaboration", "wiki": "team-collaboration",
+		// Team Collaboration sub-categories
+		"collaboration": "process-automation",
+		"requirement":   "requirement-review", "sprint": "release-review",
+		"project-management": "goal-tracking",
+		"knowledge":          "knowledge-base", "wiki": "knowledge-base",
+		"sdk":       "sdk-guide",
+		"complaint": "complaint-sop", "support": "complaint-sop",
 
-		"reference": "reference-materials", "tutorial": "reference-materials",
-		"guide": "reference-materials", "sdk": "reference-materials",
-		"rule": "reference-materials", "spec": "reference-materials",
+		// Reference Materials sub-categories
+		"reference": "rules", "tutorial": "rules", "guide": "rules",
+		"rule": "rules", "spec": "rules",
+		"sdk-usage": "sdk-usage",
 	}
 
 	for _, topic := range topics {

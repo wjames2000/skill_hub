@@ -51,6 +51,7 @@ func (h *AdminHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/admin/pending-review", h.ListPendingReviews)
 	rg.PUT("/admin/skills/:id/approve", h.ApproveSkill)
 	rg.PUT("/admin/skills/:id/reject", h.RejectSkill)
+	rg.PUT("/admin/skills/:id/scan", h.TriggerScan)
 	rg.GET("/admin/logs", h.GetSystemLogs)
 }
 
@@ -496,9 +497,34 @@ func (h *AdminHandler) GetSystemLogs(c *gin.Context) {
 	}
 
 	entries := logger.GetRecentLogs(lines)
-	// Ensure we return an empty JSON array (not null) when no logs exist.
 	if entries == nil {
 		entries = []logger.LogEntry{}
 	}
 	response.Success(c, entries)
+}
+
+func (h *AdminHandler) TriggerScan(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.Error(c, errno.ParamError)
+		return
+	}
+
+	skill, err := h.skillRepo.GetByID(id)
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+	if skill == nil {
+		response.Error(c, errno.NotFound)
+		return
+	}
+
+	if err := h.skillRepo.UpdateScanResult(id, false, "scan pending"); err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+
+	response.Success(c, gin.H{"message": "scan queued"})
 }

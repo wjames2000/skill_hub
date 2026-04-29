@@ -3,6 +3,7 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -31,6 +32,27 @@ type ScanIssue struct {
 	RuleID   string `json:"rule_id"`
 }
 
+type skillGuardOutput struct {
+	ScanTime   string `json:"scan_time"`
+	Duration   string `json:"duration"`
+	TotalFiles int    `json:"total_files"`
+	TotalIssue int    `json:"total_issues"`
+	Results    []struct {
+		RuleID      string `json:"rule_id"`
+		Severity    string `json:"severity"`
+		FilePath    string `json:"file_path"`
+		LineNumber  int    `json:"line_number"`
+		LineContent string `json:"line_content"`
+		MatchType   string `json:"match_type"`
+	} `json:"results"`
+	Summary struct {
+		Critical int `json:"critical"`
+		High     int `json:"high"`
+		Medium   int `json:"medium"`
+		Low      int `json:"low"`
+	} `json:"summary"`
+}
+
 type SecurityScanner struct {
 	config ScannerConfig
 }
@@ -48,18 +70,17 @@ func (s *SecurityScanner) ScanRepo(ctx context.Context, repoPath string) (*ScanR
 
 	binary := s.config.Binary
 	if binary == "" {
-		binary = "semgrep"
+		binary = "skill-guard"
 	}
 
 	if _, err := exec.LookPath(binary); err != nil {
 		return &ScanResult{Passed: true, Summary: "scan skipped: " + binary + " not found"}, nil
 	}
 
-	args := []string{"scan", "--json", "--no-git-ignore"}
+	args := []string{repoPath, "--json"}
 	if s.config.Rules != "" {
-		args = append(args, "--config", s.config.Rules)
+		args = append(args, "--rules", s.config.Rules)
 	}
-	args = append(args, repoPath)
 
 	cmd := exec.CommandContext(ctx, binary, args...)
 	var stdout, stderr bytes.Buffer
@@ -67,10 +88,17 @@ func (s *SecurityScanner) ScanRepo(ctx context.Context, repoPath string) (*ScanR
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			// semgrep returns exit code 1 when findings exist
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 1 && stdout.Len() > 0 {
+				// skill-guard exits with code 1 when findings exist
+			} else {
+				logger.Warn("skill-guard execution failed",
+					logger.String("error", err.Error()),
+					logger.String("stderr", stderr.String()))
+				return &ScanResult{Passed: true, Summary: "scan skipped: " + err.Error()}, nil
+			}
 		} else {
-			logger.Warn("semgrep execution failed",
+			logger.Warn("skill-guard execution failed",
 				logger.String("error", err.Error()),
 				logger.String("stderr", stderr.String()))
 			return &ScanResult{Passed: true, Summary: "scan skipped: " + err.Error()}, nil
@@ -86,59 +114,48 @@ func (s *SecurityScanner) ScanRepo(ctx context.Context, repoPath string) (*ScanR
 }
 
 func (s *SecurityScanner) parseResults(output string) (*ScanResult, error) {
-	var result struct {
-		Results []struct {
-			CheckID string `json:"check_id"`
-			Path    string `json:"path"`
-			Start   struct {
-				Line int `json:"line"`
-			} `json:"start"`
-			Extra struct {
-				Severity string `json:"severity"`
-				Message  string `json:"message"`
-			} `json:"extra"`
-		} `json:"results"`
-		Errors []interface{} `json:"errors"`
-	}
-
-	if err := jsonUnmarshal([]byte(output), &result); err != nil {
+	var sgOutput skillGuardOutput
+	if err := json.Unmarshal([]byte(output), &sgOutput); err != nil {
 		return &ScanResult{Passed: true, Summary: "parse failed: " + err.Error()}, nil
 	}
 
-	if len(result.Results) == 0 {
-		return &ScanResult{Passed: true, Summary: "no issues found"}, nil
-	}
-
-	issues := make([]ScanIssue, 0, len(result.Results))
+	issues := make([]ScanIssue, 0, len(sgOutput.Results))
 	highCount := 0
 	mediumCount := 0
 	lowCount := 0
+	criticalCount := 0
 
-	for _, r := range result.Results {
-		issue := ScanIssue{
-			Severity: r.Extra.Severity,
-			Message:  r.Extra.Message,
-			Path:     r.Path,
-			Line:     r.Start.Line,
-			RuleID:   r.CheckID,
-		}
-		issues = append(issues, issue)
+	for _, r := range sgOutput.Results {
+		issues = append(issues, ScanIssue{
+			Severity: r.Severity,
+			Message:  r.LineContent,
+			Path:     r.FilePath,
+			Line:     r.LineNumber,
+			RuleID:   r.RuleID,
+		})
 
-		switch strings.ToLower(r.Extra.Severity) {
-		case "high", "critical", "error":
+		switch strings.ToLower(r.Severity) {
+		case "critical":
+			criticalCount++
+		case "high":
 			highCount++
-		case "medium", "warning":
+		case "medium":
 			mediumCount++
 		default:
 			lowCount++
 		}
 	}
 
-	summary := fmt.Sprintf("found %d issues: %d high, %d medium, %d low",
-		len(issues), highCount, mediumCount, lowCount)
+	totalFound := criticalCount + highCount + mediumCount + lowCount
+	if totalFound == 0 {
+		return &ScanResult{Passed: true, Summary: "no issues found"}, nil
+	}
 
-	passed := highCount == 0
-	if highCount > 0 {
+	summary := fmt.Sprintf("found %d issues: %d critical, %d high, %d medium, %d low",
+		totalFound, criticalCount, highCount, mediumCount, lowCount)
+
+	passed := highCount == 0 && criticalCount == 0
+	if !passed {
 		summary = fmt.Sprintf("FAILED - %s", summary)
 	}
 

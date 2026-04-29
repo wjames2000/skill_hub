@@ -37,6 +37,9 @@ export const adminApi = {
   rejectSkill: (id: number, reason?: string) =>
     api.put<void>(`/admin/skills/${id}/reject`, { reason }),
 
+  scanSkill: (id: number) =>
+    api.put<{ message: string }>(`/admin/skills/${id}/scan`),
+
   getSystemLogs: (lines?: number) =>
     api.get<{ timestamp: string; level: string; message: string }[]>('/admin/logs', { lines }),
 

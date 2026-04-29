@@ -16,7 +16,7 @@ export function mapStats(raw: Record<string, unknown>): Stats {
     monthlyActiveDevs: (raw.active_skills as number) || 0,
     totalApiCalls: 0,
     pluginInstalls: (raw.total_installs as number) || 0,
-    todayNew: 0,
+    todayNew: (raw.today_new as number) || 0,
     api24hCalls: '0',
     crawlerRunning: 0,
   };

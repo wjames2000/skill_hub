@@ -111,7 +111,7 @@ func (w *Worker) processSkill(ctx context.Context, skillID int64) {
 	for i, chunk := range chunks {
 		vec, err := w.embedder.Embed(chunk)
 		if err != nil {
-			logger.Error("vectorizer embed failed",
+			logger.Warn("vectorizer embed failed",
 				logger.Int64("skill_id", skillID),
 				logger.Int("chunk", i),
 				logger.ErrorField(err))

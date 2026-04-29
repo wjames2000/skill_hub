@@ -33,6 +33,7 @@ import (
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	port := flag.Int("port", 0, "override server port")
+	migrateOnly := flag.Bool("migrate-only", false, "run database migrations and exit")
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
@@ -56,6 +57,11 @@ func main() {
 		logger.Fatal("db migrate", logger.String("error", err.Error()))
 	}
 	logger.Info("database connected")
+
+	if *migrateOnly {
+		logger.Info("migrations completed, exiting")
+		return
+	}
 
 	redisClient, err := rds.New(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 	if err != nil {

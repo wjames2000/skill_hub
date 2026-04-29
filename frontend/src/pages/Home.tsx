@@ -42,11 +42,15 @@ export function Home() {
     navigate(`/search?${params.toString()}`);
   };
 
+  const todayNew = stats?.todayNew ?? 0;
+  const totalSkills = stats?.totalSkills ?? 0;
+  const skillGrowth = totalSkills > todayNew ? ((todayNew / (totalSkills - todayNew)) * 100).toFixed(1) + '%' : undefined;
+
   const semanticCards = [
-    { label: t('可用技能总量', 'Total Skills'), value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: t('月活跃开发者', 'Monthly Active Devs'), value: stats ? (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k+' : '-', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('可用技能总量', 'Total Skills'), value: totalSkills.toLocaleString() ?? '-', change: skillGrowth, icon: 'extension', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('月活跃开发者', 'Monthly Active Devs'), value: stats ? (stats.monthlyActiveDevs / 1000).toFixed(1) + 'k' : '-', change: '8%', icon: 'group', color: 'text-brand-600', bg: 'bg-brand-50' },
     { label: t('累计 API 调用', 'Total API Calls'), value: stats ? (stats.totalApiCalls / 1e9).toFixed(1) + 'B' : '-', changeText: t('历史总计', 'All Time'), icon: 'api', color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: t('VS Code 插件安装', 'VS Code Plugin Installs'), value: stats ? (stats.pluginInstalls / 1000).toFixed(0) + 'k+' : '-', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
+    { label: t('VS Code 插件安装', 'VS Code Plugin Installs'), value: stats ? (stats.pluginInstalls / 1000).toFixed(0) + 'k' : '-', change: '24%', icon: 'download', color: 'text-brand-600', bg: 'bg-brand-50' },
   ];
 
   return (
@@ -137,7 +141,7 @@ export function Home() {
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl md:text-2xl font-bold text-slate-900">{stat.value}</span>
-                {'change' in stat ? (
+                {'change' in stat && stat.change ? (
                   <span className="text-xs text-green-500 flex items-center">
                     <span className="material-symbols-outlined text-[14px]">arrow_upward</span> {stat.change}
                   </span>

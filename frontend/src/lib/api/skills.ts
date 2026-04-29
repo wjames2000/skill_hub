@@ -21,7 +21,7 @@ export const skillsApi = {
   },
 
   search: async (filters: SearchFilters) => {
-    const body: Record<string, unknown> = { query: filters.query, page: filters.page, pageSize: filters.pageSize };
+    const body: Record<string, unknown> = { query: filters.query, page: filters.page, page_size: filters.pageSize };
     if (filters.category) body.category = filters.category;
     if (filters.tags && filters.tags.length > 0) body.tags = filters.tags;
     body.safe = filters.safe ?? false;

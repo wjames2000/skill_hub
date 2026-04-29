@@ -17,6 +17,7 @@ export interface Skill {
   matchScore?: number;
   source: 'official' | 'github';
   safe: boolean;
+  readme?: string;
   createdAt: string;
   updatedAt: string;
 }

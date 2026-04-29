@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hpds/skill-hub/internal/model"
@@ -23,6 +24,7 @@ func NewStatsHandler(skillRepo *repository.SkillRepo, categoryRepo *repository.C
 func (h *StatsHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/stats", h.GetStats)
 	rg.GET("/stats/top-skills", h.TopSkills)
+	rg.GET("/stats/trend", h.GetTrend)
 }
 
 func (h *StatsHandler) GetStats(c *gin.Context) {
@@ -31,6 +33,9 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 		response.Error(c, errno.DBError)
 		return
 	}
+
+	todayNew, _ := h.skillRepo.CountSince(time.Now().Add(-24 * time.Hour))
+	weeklyNew, _ := h.skillRepo.CountSince(time.Now().Add(-7 * 24 * time.Hour))
 
 	categories, err := h.categoryRepo.List()
 	if err != nil {
@@ -57,6 +62,8 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 		"active_skills":  stats.ActiveSkills,
 		"total_stars":    stats.TotalStars,
 		"total_installs": stats.TotalInstalls,
+		"today_new":      todayNew,
+		"weekly_new":     weeklyNew,
 		"categories":     categoryStats,
 	})
 }
@@ -92,5 +99,24 @@ func (h *StatsHandler) TopSkills(c *gin.Context) {
 	response.Success(c, gin.H{
 		"sort":   sort,
 		"skills": skills,
+	})
+}
+
+func (h *StatsHandler) GetTrend(c *gin.Context) {
+	daysStr := c.DefaultQuery("days", "7")
+	days, err := strconv.Atoi(daysStr)
+	if err != nil || days <= 0 || days > 90 {
+		days = 7
+	}
+
+	data, err := h.skillRepo.GetDailyNewCounts(days)
+	if err != nil {
+		response.Error(c, errno.DBError)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"days":  days,
+		"daily": data,
 	})
 }

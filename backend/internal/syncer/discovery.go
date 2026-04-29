@@ -225,7 +225,7 @@ func (d *AwesomeDiscovery) Discover(ctx context.Context, since time.Time) ([]Dis
 
 		readme, err := d.client.GetReadme(ctx, al.owner, al.name, "")
 		if err != nil {
-			logger.Warn("failed to get awesome list readme",
+			logger.Info("awesome list readme unavailable, skipping",
 				logger.String("repo", al.owner+"/"+al.name),
 				logger.String("error", err.Error()))
 			continue

@@ -5,21 +5,23 @@ import { statsApi } from "../lib/api/stats";
 import { useLanguage } from "../stores/LanguageContext";
 import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { cn } from "../lib/utils";
-import type { Stats, SyncTask } from "../types";
+import { getCategoryName } from "../lib/categories";
+import type { Stats, SyncTask, Skill } from "../types";
 
 type AdminTab = 'dashboard' | 'sync' | 'review' | 'users' | 'logs';
 
 export function Admin() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [tasks, setTasks] = useState<SyncTask[]>([]);
-  const [pendingSkills, setPendingSkills] = useState<{ id: number; title: string; author: string; time: string }[]>([]);
+  const [pendingSkills, setPendingSkills] = useState<Skill[]>([]);
   const [logs, setLogs] = useState<{ timestamp: string; level: string; message: string }[]>([]);
   const [users, setUsers] = useState<{ id: number; username: string; email: string; role: string; createdAt: string }[]>([]);
   const [triggering, setTriggering] = useState<'full' | 'incremental' | null>(null);
   const [topError, setTopError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [trendData, setTrendData] = useState<{ date: string; count: number }[]>([]);
 
   const handleApprove = async (id: number) => {
     try {
@@ -35,6 +37,13 @@ export function Admin() {
     } catch { setTopError(t('审核操作失败', 'Review operation failed')); }
   };
 
+  const handleScan = async (id: number) => {
+    try {
+      await adminApi.scanSkill(id);
+      setPendingSkills(prev => prev.map(s => s.id === id ? { ...s, safe: false } : s));
+    } catch { setTopError(t('触发扫描失败', 'Failed to trigger scan')); }
+  };
+
   const tabs: { key: AdminTab; label_zh: string; label_en: string; icon: string }[] = [
     { key: 'dashboard', label_zh: '仪表盘', label_en: 'Dashboard', icon: 'dashboard' },
     { key: 'sync', label_zh: '同步任务', label_en: 'Sync Tasks', icon: 'pest_control' },
@@ -45,15 +54,9 @@ export function Admin() {
 
   useEffect(() => {
     statsApi.getOverview().then(setStats).catch(() => {});
+    statsApi.getTrend(7).then(setTrendData).catch(() => {});
     adminApi.getSyncTasks().then(setTasks).catch(() => {});
-    adminApi.getPendingReviews().then(skills => {
-      setPendingSkills(skills.map(s => ({
-        id: s.id,
-        title: s.title,
-        author: s.author,
-        time: t('刚刚', 'Just now'),
-      })));
-    }).catch(() => {});
+    adminApi.getPendingReviews().then(setPendingSkills).catch(() => {});
     adminApi.getSystemLogs(50).then(setLogs).catch(() => {});
     adminApi.getUsers().then(res => setUsers(res.data)).catch(() => {});
   }, []);
@@ -74,12 +77,18 @@ export function Admin() {
         return (
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {[
-                { label: t('技能库总量', 'Total Skills'), value: stats?.totalSkills?.toLocaleString() ?? '-', change: '12%', icon: 'library_books', color: 'text-brand-600', bg: 'bg-brand-50' },
-                { label: t('今日新增', 'New Today'), value: stats?.todayNew != null ? String(stats.todayNew) : '-', change: '5%', icon: 'add_circle', color: 'text-brand-600', bg: 'bg-brand-50' },
-                { label: t('API 24h 调用量', 'API 24h Calls'), value: stats?.api24hCalls ?? '-', tags: [t('正常', 'Normal')], icon: 'api', color: 'text-amber-500', bg: 'bg-amber-50' },
-                { label: t('当前爬虫状态', 'Crawler Status'), value: stats?.crawlerRunning != null ? String(stats.crawlerRunning) : '-', suffix: t('个任务进行中', ' tasks running'), icon: 'bug_report', color: 'text-green-500', bg: 'bg-green-50' },
-              ].map((m, idx) => (
+              {(() => {
+                const totalSkills = stats?.totalSkills ?? 0;
+                const todayNew = stats?.todayNew ?? 0;
+                const skillGrowth = totalSkills > todayNew ? ((todayNew / (totalSkills - todayNew)) * 100).toFixed(1) + '%' : undefined;
+                const todayGrowth = todayNew > 0 ? '+' + todayNew : undefined;
+                return [
+                  { label: t('技能库总量', 'Total Skills'), value: totalSkills.toLocaleString() ?? '-', change: skillGrowth, icon: 'library_books', color: 'text-brand-600', bg: 'bg-brand-50' },
+                  { label: t('今日新增', 'New Today'), value: String(todayNew) || '-', change: todayGrowth, icon: 'add_circle', color: 'text-brand-600', bg: 'bg-brand-50' },
+                  { label: t('API 24h 调用量', 'API 24h Calls'), value: stats?.api24hCalls ?? '-', tags: [t('正常', 'Normal')], icon: 'api', color: 'text-amber-500', bg: 'bg-amber-50' },
+                  { label: t('当前爬虫状态', 'Crawler Status'), value: stats?.crawlerRunning != null ? String(stats.crawlerRunning) : '-', suffix: t('个任务进行中', ' tasks running'), icon: 'bug_report', color: 'text-green-500', bg: 'bg-green-50' },
+                ];
+              })().map((m, idx) => (
                 <div key={idx} className="card p-5 md:p-6">
                   <div className="flex items-center justify-between mb-3 md:mb-4">
                     <span className="text-sm text-slate-500 font-medium">{m.label}</span>
@@ -104,28 +113,43 @@ export function Admin() {
             <div className="card p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('近 7 日趋势', '7-Day Trend')}</h3>
+                <div className="flex gap-3 md:gap-4 text-xs font-medium text-slate-500">
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-600 rounded-sm" />{t('新增技能', 'New Skills')}</div>
+                </div>
               </div>
               <div className="h-48 md:h-64 w-full flex items-end gap-2 pt-8 relative border-b border-l border-slate-200 pl-4 pb-4 overflow-x-auto">
                 <div className="absolute left-[-30px] bottom-4 top-8 flex flex-col justify-between text-xs text-slate-400 h-full">
-                  <span>10k</span>
-                  <span>5k</span>
+                  <span>{Math.max(...trendData.map(d => d.count), 1)}</span>
+                  <span>{Math.round(Math.max(...trendData.map(d => d.count), 1) / 2)}</span>
                   <span>0</span>
                 </div>
-                {[t('周一','Mon'),t('周二','Tue'),t('周三','Wed'),t('周四','Thu'),t('周五','Fri'),t('周六','Sat'),t('周日','Sun')].map((day, idx) => (
-                  <div key={day} className="flex-1 min-w-[40px] flex items-end justify-around h-full relative group">
-                    <div className="w-3 md:w-4 bg-brand-600/30 rounded-t hover:bg-brand-600 transition-colors cursor-pointer"
-                      style={{ height: `${[40, 45, 35, 50, 60, 75, 85][idx]}%` }}
-                    />
-                    <div className="w-3 md:w-4 bg-brand-400/50 rounded-t ml-0.5 md:ml-1 hover:bg-brand-400 transition-colors cursor-pointer"
-                      style={{ height: `${[60, 65, 50, 70, 75, 85, 95][idx]}%` }}
-                    />
-                    <span className="absolute -bottom-6 text-[10px] md:text-xs text-slate-400 whitespace-nowrap">{day}</span>
-                  </div>
-                ))}
-                <div className="absolute top-0 right-0 flex gap-3 md:gap-4 text-xs font-medium text-slate-500">
-                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-600 rounded-sm" />{t('新增技能', 'New Skills')}</div>
-                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-brand-400 rounded-sm" />{t('API 调用量', 'API Calls')}</div>
-                </div>
+                {(() => {
+                  const maxCount = Math.max(...trendData.map(d => d.count), 1);
+                  const dayLabels = [t('周日','Sun'),t('周一','Mon'),t('周二','Tue'),t('周三','Wed'),t('周四','Thu'),t('周五','Fri'),t('周六','Sat')];
+                  return trendData.map((d, idx) => {
+                    const date = new Date(d.date);
+                    const dayIdx = date.getDay();
+                    const heightPct = Math.max((d.count / maxCount) * 100, 2);
+                    return (
+                      <div key={d.date} className="flex-1 min-w-[40px] flex flex-col items-center justify-end h-full relative group">
+                        <div className="w-3 md:w-4 bg-brand-600/30 rounded-t hover:bg-brand-600 transition-colors cursor-pointer"
+                          style={{ height: `${heightPct}%` }}
+                          title={(() => {
+                            const dt = new Date(d.date);
+                            const y = dt.getFullYear();
+                            const m = String(dt.getMonth() + 1).padStart(2, '0');
+                            const day = String(dt.getDate()).padStart(2, '0');
+                            const wd = language === 'zh'
+                              ? ['周日','周一','周二','周三','周四','周五','周六'][dt.getDay()]
+                              : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+                            return `${y}年${m}月${day}日（${wd}）：${d.count}`;
+                          })()}
+                        />
+                        <span className="absolute -bottom-6 text-[10px] md:text-xs text-slate-400 whitespace-nowrap">{dayLabels[dayIdx]}</span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
@@ -210,25 +234,80 @@ export function Admin() {
         return (
           <div className="card">
             <div className="p-4 border-b border-slate-200">
-              <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('待审核技能', 'Pending Review')}</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('待审核技能', 'Pending Review')}</h3>
+                {pendingSkills.length > 0 && (
+                  <span className="bg-red-50 text-red-600 text-xs font-medium px-2 py-0.5 rounded-full">{pendingSkills.length}</span>
+                )}
+              </div>
             </div>
             <div className="divide-y divide-slate-100">
-              {pendingSkills.map(item => (
-                <div key={item.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 group">
-                  <div>
-                    <h4 className="font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{item.title}</h4>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                      <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">person</span>{item.author}</span>
-                      <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">schedule</span>{item.time}</span>
+              {pendingSkills.map(skill => (
+                <div key={skill.id} className="p-4 md:p-5 hover:bg-slate-50 transition-colors">
+                  <div className="flex flex-col gap-3">
+                    {/* Row 1: name | author | source | security */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                      <h3 className="font-semibold text-slate-900 text-sm">{skill.title}</h3>
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                        <span className="material-symbols-outlined text-[14px]">person</span>{skill.author}
+                      </span>
+                      <span className="badge text-[11px] bg-slate-50 text-slate-600 border border-slate-200">
+                        {skill.source === 'official' ? t('官方', 'Official') : t('社区', 'Community')}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                        skill.safe ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        <span className="material-symbols-outlined text-[12px]">{skill.safe ? 'shield' : 'warning'}</span>
+                        {skill.safe ? t('安全', 'Safe') : t('待扫描', 'Pending')}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApprove(item.id)} className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-200 bg-white hover:bg-green-50 rounded transition-colors">{t('通过', 'Approve')}</button>
-                    <button onClick={() => handleReject(item.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 bg-white hover:bg-red-50 rounded transition-colors">{t('驳回', 'Reject')}</button>
+
+                    {/* Row 2: tags | category | date | stars */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+                      {skill.tags && skill.tags.length > 0 && (
+                        <span className="flex flex-wrap gap-1">
+                          {skill.tags.slice(0, 3).map(tag => (
+                            <span key={tag} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-mono border border-slate-200">{tag}</span>
+                          ))}
+                        </span>
+                      )}
+                      {skill.category && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">folder</span>
+                          {getCategoryName(skill.category, language)}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                        {skill.createdAt ? skill.createdAt.slice(0, 10) : '-'}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">star</span>
+                        {(skill.downloads / 1000).toFixed(1)}k
+                      </span>
+                    </div>
+
+                    {/* Row 3: description (3 lines) */}
+                    <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">{skill.description}</p>
+
+                    {/* Row 4: readme excerpt (5 lines) */}
+                    {skill.readme ? (
+                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-5 whitespace-pre-wrap">{skill.readme}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-5">{t('暂无说明文档', 'No documentation available')}</p>
+                    )}
+
+                    {/* Row 5: actions */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Link to={`/skill/${skill.id}`} className="px-3 py-1.5 text-xs font-medium text-brand-600 border border-brand-200 hover:bg-brand-50 rounded transition-colors">{t('查看详情', 'Details')}</Link>
+                      <button onClick={() => handleScan(skill.id)} className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 rounded transition-colors">{t('安全扫描', 'Scan')}</button>
+                      <button onClick={() => handleApprove(skill.id)} className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-200 hover:bg-green-50 rounded transition-colors">{t('通过', 'Approve')}</button>
+                      <button onClick={() => handleReject(skill.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 rounded transition-colors">{t('驳回', 'Reject')}</button>
+                    </div>
                   </div>
                 </div>
               ))}
-              {pendingSkills.length === 0 && !stats && (
+              {pendingSkills.length === 0 && (
                 <div className="p-8 text-center text-sm text-slate-500">{t('暂无待审核技能', 'No skills pending review')}</div>
               )}
             </div>
@@ -370,7 +449,10 @@ export function Admin() {
               )}
             >
               <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
-              <span className="text-sm">{t(tab.label_zh, tab.label_en)}</span>
+              <span className="text-sm flex-1 text-left">{t(tab.label_zh, tab.label_en)}</span>
+              {tab.key === 'review' && pendingSkills.length > 0 && (
+                <span className="text-[11px] bg-red-50 text-red-600 font-medium px-1.5 py-0.5 rounded-full">{pendingSkills.length}</span>
+              )}
             </button>
           ))}
         </div>

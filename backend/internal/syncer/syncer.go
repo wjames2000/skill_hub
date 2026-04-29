@@ -375,6 +375,19 @@ func (s *SyncOrchestrator) reconcileCategory(skill *model.Skill) {
 		return
 	}
 	skill.CategoryID = cat.ID
+
+	// Build full category path: "大类 > 子类"
+	names := []string{cat.Name}
+	pid := cat.ParentID
+	for pid > 0 {
+		parent, err := s.categoryRepo.GetByID(pid)
+		if err != nil || parent == nil {
+			break
+		}
+		names = append([]string{parent.Name}, names...)
+		pid = parent.ParentID
+	}
+	skill.Category = strings.Join(names, " > ")
 }
 
 func (s *SyncOrchestrator) translateDescription(ctx context.Context, skill *model.Skill) {
@@ -392,7 +405,9 @@ func (s *SyncOrchestrator) translateDescription(ctx context.Context, skill *mode
 Text: %s`, skill.Description)
 		zh, err := s.llmClient.Chat("You are a professional translator.", prompt)
 		if err != nil {
-			logger.Warn("translate description to zh failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			logger.Info("translate description to zh failed, using original",
+				logger.String("skill", skill.Repository),
+				logger.String("error", err.Error()))
 			skill.ZhDescription = skill.Description
 		} else {
 			skill.ZhDescription = strings.TrimSpace(zh)
@@ -403,7 +418,9 @@ Text: %s`, skill.Description)
 Text: %s`, skill.Description)
 		en, err := s.llmClient.Chat("You are a professional translator.", prompt)
 		if err != nil {
-			logger.Warn("translate description to en failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			logger.Info("translate description to en failed, using original",
+				logger.String("skill", skill.Repository),
+				logger.String("error", err.Error()))
 			skill.EnDescription = skill.Description
 		} else {
 			skill.EnDescription = strings.TrimSpace(en)
@@ -431,7 +448,7 @@ Text: %s`, skill.Description)
 Chinese: %s`, skill.ZhDescription)
 		en, err := s.llmClient.Chat("You are a professional translator. Translate Chinese to English accurately.", prompt)
 		if err != nil {
-			logger.Warn("translate zh->en failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			logger.Info("translate zh->en failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
 			return
 		}
 		skill.EnDescription = strings.TrimSpace(en)
@@ -444,7 +461,7 @@ Chinese: %s`, skill.ZhDescription)
 English: %s`, skill.EnDescription)
 		zh, err := s.llmClient.Chat("You are a professional translator. Translate English to Chinese accurately.", prompt)
 		if err != nil {
-			logger.Warn("translate en->zh failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
+			logger.Info("translate en->zh failed", logger.String("skill", skill.Repository), logger.String("error", err.Error()))
 			return
 		}
 		skill.ZhDescription = strings.TrimSpace(zh)

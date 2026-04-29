@@ -51,6 +51,14 @@ const categoryNames: Record<string, { zh: string; en: string }> = {
 };
 
 export function getCategoryName(slug: string, language: Language): string {
+  // Handle path format: "大类 > 子类" — split, look up each segment, rejoin
+  if (slug.includes(' > ')) {
+    return slug.split(' > ').map(s => {
+      const trimmed = s.trim();
+      const cat = categoryNames[trimmed];
+      return cat ? (language === 'zh' ? cat.zh : cat.en) : trimmed;
+    }).join(' > ');
+  }
   const cat = categoryNames[slug];
   if (!cat) return slug;
   return language === 'zh' ? cat.zh : cat.en;

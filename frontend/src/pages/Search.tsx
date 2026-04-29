@@ -2,7 +2,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, type FormEvent } from "react";
 import { skillsApi } from "../lib/api/skills";
 import { routerApi } from "../lib/api/router";
-import { ErrorBanner } from "../components/ui/ErrorBanner";
+import { SkillCard } from "../components/ui/SkillCard";
 import { Pagination } from "../components/ui/Pagination";
 import { CategoryTree } from "../components/ui/CategoryTree";
 import { useLanguage } from "../stores/LanguageContext";
@@ -32,9 +32,9 @@ export function Search() {
   const [sort, setSort] = useState<'relevance' | 'rating' | 'downloads'>('relevance');
   const [semanticResults, setSemanticResults] = useState<RouterMatchResult[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [topError, setTopError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(10);
 
-  const pageSize = 10;
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -54,17 +54,20 @@ export function Search() {
 
   useEffect(() => {
     setLoading(true);
-    setTopError(null);
+    setLoadError(null);
 
     if (!query) {
-      const listParams: { sort: string; page: number; pageSize: number; safe: boolean; category?: string } = { sort: 'installs', page, pageSize, safe: safeOnly };
+      const listParams: { sort: string; page: number; pageSize: number; safe: boolean; category?: string; tags?: string[] } = { sort: 'installs', page, pageSize, safe: safeOnly };
       if (category) listParams.category = category;
+      if (tags.trim()) {
+        listParams.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
       skillsApi.list(listParams)
         .then(res => {
           setSkills(res.data);
           setTotal(res.total);
         })
-        .catch(() => setTopError('加载技能列表失败'))
+        .catch(() => setLoadError(t('加载失败，请重试', 'Failed to load, please retry')))
         .finally(() => setLoading(false));
       return;
     }
@@ -78,7 +81,7 @@ export function Search() {
         })
         .catch(() => {
           setSemanticResults([]);
-          setTopError('语义搜索失败');
+          setLoadError(t('搜索失败，请重试', 'Search failed, please retry'));
         })
         .finally(() => setLoading(false));
     } else {
@@ -95,10 +98,10 @@ export function Search() {
           setSkills(res.data);
           setTotal(res.total);
         })
-        .catch(() => setTopError('搜索失败'))
+        .catch(() => setLoadError(t('搜索失败，请重试', 'Search failed, please retry')))
         .finally(() => setLoading(false));
     }
-  }, [query, page, category, tags, safeOnly, sort, mode]);
+  }, [query, page, category, tags, safeOnly, sort, mode, pageSize]);
 
   const handleFilterChange = (key: string, value: string | boolean) => {
     setPage(1);
@@ -109,23 +112,6 @@ export function Search() {
 
   return (
     <div className="w-full max-w-[1440px] mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col gap-6">
-      <form onSubmit={handleSearch} className="relative flex items-center shadow-sm rounded-lg bg-white border border-slate-200 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-50 w-full max-w-xl">
-        <span className="material-symbols-outlined absolute left-4 text-slate-400">search</span>
-        <input
-          type="text"
-          value={searchInput}
-          onChange={e => setSearchInput(e.target.value)}
-          className="w-full py-3 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none rounded-lg placeholder:text-slate-500"
-          placeholder={mode === 'semantic' ? t("用自然语言描述您需要的技能...", "Describe the skill you need in natural language...") : t("搜索技能，如 'Python 代码重构'", "Search skills, e.g. 'Python code refactoring'")}
-        />
-        <button
-          type="submit"
-          disabled={!searchInput.trim()}
-          className="absolute right-2 px-4 py-1.5 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
-        >
-          {mode === 'semantic' ? t('智能匹配', 'Smart Match') : t('搜索', 'Search')}
-        </button>
-      </form>
 
       <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start">
       <aside className="w-full md:w-[240px] lg:w-[260px] flex-shrink-0 flex flex-col gap-6 md:sticky md:top-20">
@@ -210,7 +196,23 @@ export function Search() {
       </aside>
 
       <section className="flex-1 min-w-0 flex flex-col gap-5">
-        <ErrorBanner message={topError} onDismiss={() => setTopError(null)} />
+        <form onSubmit={handleSearch} className="relative flex items-center shadow-sm rounded-lg bg-white border border-slate-200 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-50 w-full shrink-0">
+          <span className="material-symbols-outlined absolute left-4 text-slate-400">search</span>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            className="w-full py-3 pl-12 pr-32 bg-transparent border-none text-slate-900 text-sm focus:ring-0 outline-none rounded-lg placeholder:text-slate-500"
+            placeholder={mode === 'semantic' ? t("用自然语言描述您需要的技能...", "Describe the skill you need in natural language...") : t("搜索技能，如 'Python 代码重构'", "Search skills, e.g. 'Python code refactoring'")}
+          />
+          <button
+            type="submit"
+            disabled={!searchInput.trim()}
+            className="absolute right-2 px-4 py-1.5 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50"
+          >
+            {mode === 'semantic' ? t('智能匹配', 'Smart Match') : t('搜索', 'Search')}
+          </button>
+        </form>
         {query && (
           <div className="flex flex-col gap-3">
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">
@@ -273,11 +275,32 @@ export function Search() {
               </div>
             ))}
           </div>
+        ) : loadError ? (
+          <div className="card p-12 text-center">
+            <span className="material-symbols-outlined text-[48px] text-slate-300">cloud_off</span>
+            <h3 className="text-lg font-semibold text-slate-900 mt-4">{loadError}</h3>
+            <button
+              onClick={() => setLoadError(null)}
+              className="btn-secondary text-sm mt-4"
+            >
+              {t('关闭', 'Dismiss')}
+            </button>
+          </div>
         ) : skills.length === 0 ? (
           <div className="card p-12 text-center">
-            <span className="material-symbols-outlined text-[48px] text-slate-300">search_off</span>
-            <h3 className="text-lg font-semibold text-slate-900 mt-4">{t('未找到相关技能', 'No matching skills found')}</h3>
-            <p className="text-sm text-slate-500 mt-1">{t('请尝试调整搜索关键词或筛选条件', 'Try adjusting your search keywords or filters')}</p>
+            <span className="material-symbols-outlined text-[48px] text-slate-300">{query ? 'search_off' : 'folder_off'}</span>
+            <h3 className="text-lg font-semibold text-slate-900 mt-4">
+              {query
+                ? t('未找到相关技能', 'No matching skills found')
+                : t('该分类下暂无可用技能', 'No skills available in this category')
+              }
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              {query
+                ? t('请尝试调整搜索关键词或筛选条件', 'Try adjusting your search keywords or filters')
+                : t('请尝试切换其他分类', 'Try switching to another category')
+              }
+            </p>
           </div>
         ) : (
           <>
@@ -363,6 +386,7 @@ export function Search() {
               total={total || skills.length}
               pageSize={pageSize}
               onChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
             />
           </>
         )}

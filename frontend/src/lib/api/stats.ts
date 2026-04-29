@@ -6,6 +6,8 @@ export const statsApi = {
   getOverview: async () =>
     mapStats(await api.get<Record<string, unknown>>('/stats')),
 
-  getTrend: (days?: number) =>
-    api.get<{ date: string; newSkills: number; apiCalls: number }[]>('/stats/trend', { days }),
+  getTrend: async (days?: number) => {
+    const res = await api.get<{ days: number; daily: { date: string; count: number }[] }>('/stats/trend', { days });
+    return res.daily || [];
+  },
 };
